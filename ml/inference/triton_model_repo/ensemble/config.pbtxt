@@ -1,0 +1,35 @@
+name: "amulet_ensemble_v0"
+platform: "ensemble"
+max_batch_size: 8
+
+input [
+  { name: "IMAGE" data_type: TYPE_UINT8 dims: [ -1 ] }
+]
+output [
+  { name: "LOGITS" data_type: TYPE_FP32 dims: [ 2 ] },
+  { name: "EMBED" data_type: TYPE_FP32 dims: [ 768 ] }
+]
+
+ensemble_scheduling {
+  step [{
+    model_name: "preprocess"
+    model_version: -1
+    input_map { key: "IMAGE" value: "IMAGE" }
+    output_map { key: "IMAGE_OUT" value: "IMAGE" }
+  },{
+    model_name: "detector"
+    model_version: -1
+    input_map { key: "IMAGE" value: "IMAGE" }
+    output_map { key: "BBOX" value: "BBOX" }
+  },{
+    model_name: "embedder"
+    model_version: -1
+    input_map { key: "ROI" value: "IMAGE" }
+    output_map { key: "EMBED" value: "EMBED" }
+  },{
+    model_name: "classifier"
+    model_version: -1
+    input_map { key: "EMBED" value: "EMBED" }
+    output_map { key: "LOGITS" value: "LOGITS" }
+  }]
+}

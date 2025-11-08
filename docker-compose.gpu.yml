@@ -1,0 +1,53 @@
+version: "3.9"
+services:
+  web:
+    build: ./apps/web-next
+    container_name: web-next
+    environment:
+      - NEXT_PUBLIC_API_BASE=${NEXT_PUBLIC_API_BASE}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+  api:
+    build: ./apps/amulet-ai-service
+    container_name: amulet-ai-service
+    environment:
+      - API_HOST=${API_HOST}
+      - API_PORT=${API_PORT}
+      - TRITON_GRPC_URL=${TRITON_GRPC_URL}
+      - QDRANT_URL=${QDRANT_URL}
+      - QDRANT_COLLECTION=${QDRANT_COLLECTION}
+      - EMBED_DIM=${EMBED_DIM}
+    volumes:
+      - ./scripts:/app/scripts
+      - ./ml/inference/triton_model_repo:/models
+    ports:
+      - "8000:8000"
+    depends_on:
+      - triton
+      - qdrant
+
+  triton:
+    image: nvcr.io/nvidia/tritonserver:24.05-py3
+    container_name: triton
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    command: ["tritonserver", "--model-repository=/models"]
+    volumes:
+      - ./ml/inference/triton_model_repo:/models
+    ports:
+      - "8001:8001"
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+volumes:
+  qdrant_data:

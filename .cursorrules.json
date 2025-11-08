@@ -1,0 +1,95 @@
+{
+  "$schema": "https://raw.githubusercontent.com/getcursor/cursor-rules/main/schema.v1.json",
+  "project": "Pra Analysis \u2014 Amulet Authenticity (Safe OSS)",
+  "tech_stack": [
+    "Next.js 14 + app router + TypeScript",
+    "FastAPI (Python 3.11)",
+    "NVIDIA Triton (gRPC)",
+    "Qdrant (Vector DB)",
+    "MMDetection (Apache-2.0) for detection",
+    "OpenCLIP for embeddings (Apache-2.0)",
+    "Grad-CAM/TorchCAM for XAI",
+    "MLflow + DVC (later phases)"
+  ],
+  "constraints": {
+    "licenses": [
+      "Apache-2.0",
+      "MIT",
+      "BSD-3"
+    ],
+    "avoid": [
+      "AGPL-3"
+    ],
+    "infra_note": "Triton GPU preferred; provide CPU fallbacks where possible"
+  },
+  "coding_conventions": {
+    "typescript": {
+      "strict": true,
+      "paths": {
+        "@/components/*": [
+          "apps/web-next/components/*"
+        ],
+        "@/lib/*": [
+          "apps/web-next/lib/*"
+        ]
+      }
+    },
+    "python": {
+      "version": "3.11",
+      "style": "ruff/black",
+      "type_check": "mypy"
+    }
+  },
+  "generation_prefs": {
+    "frontend": {
+      "ui": "shadcn/ui",
+      "forms": "react-hook-form + zod",
+      "upload": "fetch to FastAPI /v1/analyze",
+      "state": "server actions + minimal client state"
+    },
+    "backend": {
+      "api": "FastAPI + Pydantic v2",
+      "clients": [
+        "tritonclient[grpc]",
+        "qdrant-client"
+      ],
+      "logging": "structlog + uvicorn access logs",
+      "env": "pydantic-settings"
+    }
+  },
+  "folders": {
+    "frontend": "apps/web-next",
+    "backend": "apps/amulet-ai-service",
+    "ml": "ml",
+    "scripts": "scripts",
+    "shared": "shared"
+  },
+  "security": {
+    "upload_limits_mb": 15,
+    "allowed_mime": [
+      "image/jpeg",
+      "image/png"
+    ],
+    "store": "local disk (dev) \u2014 S3 in prod"
+  },
+  "tasks": [
+    {
+      "name": "Bootstrap Frontend",
+      "path": "apps/web-next",
+      "rules": [
+        "Create Next.js app router with / (upload) and /result/[id]",
+        "Use Tailwind + shadcn/ui",
+        "Implement dropzone, preview, call POST /v1/analyze"
+      ]
+    },
+    {
+      "name": "Bootstrap Backend",
+      "path": "apps/amulet-ai-service",
+      "rules": [
+        "Create FastAPI with /health, /v1/analyze, /v1/feedback",
+        "Wire Triton gRPC stub (mock first)",
+        "Wire Qdrant client and ensure collection exists"
+      ]
+    }
+  ]
+}
