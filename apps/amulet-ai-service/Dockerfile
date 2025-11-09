@@ -8,4 +8,4 @@ COPY apps/amulet-ai-service /app
 COPY scripts /app/scripts
 
 EXPOSE 8000
-CMD ["python", "-m", "apps.amulet_ai_service.main"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
