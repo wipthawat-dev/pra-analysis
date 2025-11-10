@@ -1,0 +1,519 @@
+# Pra Analysis - AI Image Authenticity Analysis System
+
+You are an expert in Python (FastAPI), TypeScript, Next.js 14, React, PostgreSQL, Docker, and AI/ML systems.
+
+## Project Overview
+
+This is **Pra Analysis** - an AI-powered image authenticity analysis system with:
+- **Backend**: FastAPI (Python 3.11+), PostgreSQL, SQLAlchemy, MinIO, Qdrant
+- **Frontend**: Next.js 14 App Router, React, Shadcn UI, Tailwind CSS
+- **ML/AI**: NVIDIA Triton, ONNX/TensorRT models, XAI utilities
+- **Infrastructure**: Docker (CPU/GPU modes), PowerShell automation
+
+## Project Structure
+
+```
+pra-analysis/
+├── apps/
+│   ├── amulet-ai-service/      # FastAPI backend
+│   │   ├── main.py             # Application entry point
+│   │   ├── routes/             # API route handlers
+│   │   ├── services/           # Business logic layer
+│   │   ├── models/             # SQLAlchemy database models
+│   │   ├── schemas/            # Pydantic schemas
+│   │   └── tests/              # Pytest test suite
+│   └── web-next/               # Next.js frontend
+│       ├── app/                # App Router pages
+│       ├── components/         # React components
+│       └── lib/                # Utilities and API client
+├── ml/                         # ML models and inference
+│   ├── inference/              # Triton model repository
+│   ├── training/               # Training scripts
+│   └── xai/                    # Explainable AI utilities
+├── scripts/                    # Utility scripts
+├── shared/                     # Shared schemas and types
+└── docker-compose.*.yml        # Docker configurations
+```
+
+---
+
+## CRITICAL RULES - MUST FOLLOW
+
+### 1. Python Import Paths (ABSOLUTE IMPORTS ONLY)
+
+**🚨 NEVER use relative imports in Python code!**
+
+✅ **CORRECT - Absolute imports:**
+```python
+from apps.amulet_ai_service.services.database import get_db, init_db
+from apps.amulet_ai_service.services.minio_client import minio_client
+from apps.amulet_ai_service.models.database_models import Image, Prediction
+from apps.amulet_ai_service.schemas.admin_schemas import DatasetCreate
+from apps.amulet_ai_service.routes import admin, import_route
+```
+
+❌ **WRONG - Relative imports:**
+```python
+from services.database import get_db
+from models.database_models import Image
+from ..services.database import get_db
+```
+
+**Reason:** Docker container sets `PYTHONPATH=/app` and calls modules with absolute paths.
+
+### 2. Python Version Compatibility
+
+- **Use Python 3.11 or 3.12** (NOT 3.13 - SQLAlchemy compatibility issues)
+- Test all code with Python 3.11+ compatibility in mind
+- Use SQLite for unit testing, PostgreSQL for integration/production
+
+### 3. FastAPI Backend Standards
+
+#### Code Structure
+- Keep routes in `routes/` (thin layer, delegate to services)
+- Keep business logic in `services/`
+- Keep data models in `models/`
+- Keep request/response schemas in `schemas/`
+
+#### API Response Format
+```python
+from pydantic import BaseModel
+from typing import Optional
+
+class StandardResponse(BaseModel):
+    success: bool
+    data: Optional[dict] = None
+    error: Optional[str] = None
+    message: Optional[str] = None
+```
+
+#### Database Access
+- Always use dependency injection: `db: Session = Depends(get_db)`
+- Use SQLAlchemy ORM (not raw SQL unless necessary)
+- Handle transactions properly with try/except
+- Close sessions appropriately
+
+#### Error Handling
+```python
+from fastapi import HTTPException, status
+
+# Use appropriate HTTP status codes
+raise HTTPException(
+    status_code=status.HTTP_400_BAD_REQUEST,
+    detail="Clear error message"
+)
+```
+
+### 4. Next.js Frontend Standards
+
+#### File Structure
+- Use App Router (NOT Pages Router)
+- Server Components by default
+- Use 'use client' only when necessary (Web APIs, hooks, interactivity)
+- Keep components in `components/`
+- Keep utilities in `lib/`
+
+#### Component Structure
+```typescript
+// components/example.tsx
+import { SomeComponent } from "@/components/ui/some-component"
+
+interface ExampleProps {
+  title: string
+  description?: string
+}
+
+export function Example({ title, description }: ExampleProps) {
+  return (
+    <div className="container">
+      <h1>{title}</h1>
+      {description && <p>{description}</p>}
+    </div>
+  )
+}
+```
+
+#### Naming Conventions
+- Components: PascalCase (e.g., `AnalysisCard.tsx`)
+- Utilities: camelCase (e.g., `formatDate.ts`)
+- Directories: kebab-case (e.g., `admin-panel/`)
+- Use named exports for components
+
+#### Styling
+- Use Tailwind CSS utility classes
+- Use Shadcn UI components (already configured)
+- Mobile-first responsive design
+- Use CSS variables for theming
+
+#### State Management
+- Use 'nuqs' for URL search parameter state
+- Server Components for data fetching
+- Minimize client-side state
+- Use React Server Components (RSC) patterns
+
+### 5. TypeScript Standards
+
+- **TypeScript for ALL frontend code**
+- Use interfaces over types
+- Avoid enums, use const objects or maps instead
+- Define proper types for API responses
+- Use strict type checking
+
+```typescript
+// Good
+interface User {
+  id: string
+  name: string
+  email: string
+}
+
+const USER_ROLES = {
+  ADMIN: "admin",
+  USER: "user",
+} as const
+
+type UserRole = typeof USER_ROLES[keyof typeof USER_ROLES]
+
+// Bad
+enum UserRole {
+  ADMIN = "admin",
+  USER = "user",
+}
+```
+
+### 6. Testing Standards
+
+#### Backend Testing (pytest)
+- **100+ automated tests** - maintain this coverage
+- Test files: `test_*.py` in `apps/amulet-ai-service/tests/`
+- Use fixtures from `conftest.py`
+- Use SQLite for unit tests (set `USE_SQLITE=true`)
+- Mock external services (Triton, MinIO, Qdrant) when appropriate
+
+```python
+# Test example
+import pytest
+from fastapi.testclient import TestClient
+
+def test_analyze_endpoint(client: TestClient, sample_image):
+    response = client.post(
+        "/analyze",
+        files={"file": ("test.jpg", sample_image, "image/jpeg")}
+    )
+    assert response.status_code == 200
+    assert "verdict" in response.json()
+```
+
+#### Frontend Testing (Jest + React Testing Library)
+- Test files: `*.test.tsx` in `__tests__/`
+- Test user interactions, not implementation
+- Use semantic queries (getByRole, getByLabelText)
+
+### 7. Docker and Environment
+
+#### Docker Compose
+- **CPU Mode**: `docker-compose.cpu.yml` (mock Triton)
+- **GPU Mode**: `docker-compose.gpu.yml` (real Triton)
+- **Test Mode**: `docker-compose.test.yml` (for testing)
+
+#### Environment Variables
+- Always use `.env` file (copy from `.env.example`)
+- Never commit sensitive data
+- Document new environment variables
+
+#### PowerShell Scripts
+- Use `.\make.ps1` for automation (Windows primary platform)
+- Maintain compatibility with Unix Makefile
+
+### 8. Database Models and Migrations
+
+#### SQLAlchemy Models
+```python
+from sqlalchemy import Column, Integer, String, DateTime, JSON
+from sqlalchemy.ext.declarative import declarative_base
+
+Base = declarative_base()
+
+class Image(Base):
+    __tablename__ = "images"
+    
+    id = Column(Integer, primary_key=True)
+    filename = Column(String(255), nullable=False)
+    upload_time = Column(DateTime, nullable=False)
+    metadata = Column(JSON, nullable=True)
+```
+
+#### Database Schema
+- SQL schema in `shared/schemas/sql.sql`
+- Auto-initialize on startup
+- Use migrations for production changes
+
+### 9. API Client Pattern (Frontend)
+
+```typescript
+// lib/api.ts
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000"
+
+export async function analyzeImage(file: File) {
+  const formData = new FormData()
+  formData.append("file", file)
+  
+  const response = await fetch(`${API_BASE}/analyze`, {
+    method: "POST",
+    body: formData,
+  })
+  
+  if (!response.ok) {
+    throw new Error(`API error: ${response.statusText}`)
+  }
+  
+  return response.json()
+}
+```
+
+### 10. Security Best Practices
+
+- Validate all user inputs (Pydantic for backend, Zod for frontend)
+- Sanitize file uploads (check MIME types, file sizes)
+- Use parameterized queries (SQLAlchemy ORM handles this)
+- Implement rate limiting for public endpoints
+- CORS configured properly in FastAPI
+- Never expose sensitive data in error messages
+
+### 11. Code Quality Standards
+
+#### Python (Backend)
+- Use **Black** for formatting
+- Use **Ruff** for linting
+- Type hints for all function signatures
+- Docstrings for public functions
+- Keep functions focused and small
+
+```python
+from typing import List, Optional
+
+def get_images_by_status(
+    db: Session,
+    status: str,
+    limit: int = 100,
+    offset: int = 0
+) -> List[Image]:
+    """
+    Retrieve images filtered by status with pagination.
+    
+    Args:
+        db: Database session
+        status: Image processing status
+        limit: Maximum number of results
+        offset: Number of results to skip
+        
+    Returns:
+        List of Image objects
+    """
+    return db.query(Image).filter(
+        Image.status == status
+    ).limit(limit).offset(offset).all()
+```
+
+#### TypeScript (Frontend)
+- Use **Prettier** for formatting
+- Use **ESLint** for linting
+- Functional components only
+- Descriptive variable names with auxiliary verbs
+
+```typescript
+const isLoading = true
+const hasError = false
+const shouldShowModal = false
+```
+
+### 12. ML/AI Specific Rules
+
+#### Triton Integration
+- Mock Triton in CPU mode (development)
+- Use real Triton in GPU mode (production)
+- Handle inference errors gracefully
+- Cache embeddings when possible
+
+#### Model Versioning
+- Track model versions in responses
+- Store model metadata in database
+- Log model performance metrics
+
+### 13. Documentation Standards
+
+- Update README files when adding features
+- Document API endpoints in FastAPI (auto-generates docs)
+- Add comments for complex business logic
+- Keep changelog updated
+
+### 14. Performance Optimization
+
+#### Backend
+- Use database indexes appropriately
+- Implement pagination for list endpoints
+- Cache frequently accessed data
+- Use async/await for I/O operations
+- Optimize database queries (avoid N+1)
+
+#### Frontend
+- Use dynamic imports for large components
+- Optimize images (WebP, lazy loading)
+- Minimize client-side JavaScript
+- Use Server Components when possible
+- Implement proper loading states
+
+### 15. Error Handling Patterns
+
+#### Backend Error Response
+```python
+from fastapi import HTTPException, status
+
+@router.post("/analyze")
+async def analyze_image(file: UploadFile = File(...)):
+    try:
+        # Process image
+        result = await process_image(file)
+        return {"success": True, "data": result}
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error"
+        )
+```
+
+#### Frontend Error Handling
+```typescript
+"use client"
+
+import { useState } from "react"
+
+export function AnalyzeForm() {
+  const [error, setError] = useState<string | null>(null)
+  
+  async function handleSubmit(file: File) {
+    try {
+      setError(null)
+      const result = await analyzeImage(file)
+      // Handle success
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error")
+    }
+  }
+  
+  return (
+    <div>
+      {error && <div className="text-red-500">{error}</div>}
+      {/* Form content */}
+    </div>
+  )
+}
+```
+
+---
+
+## Common Pitfalls to Avoid
+
+1. ❌ Using relative imports in Python backend
+2. ❌ Using Python 3.13 (compatibility issues)
+3. ❌ Not handling database sessions properly
+4. ❌ Using 'use client' unnecessarily in Next.js
+5. ❌ Not validating user inputs
+6. ❌ Exposing sensitive data in error messages
+7. ❌ Not testing code before committing
+8. ❌ Creating classes when functions suffice
+9. ❌ Not handling async operations properly
+10. ❌ Ignoring TypeScript errors
+
+---
+
+## Quick Reference Commands
+
+### Development
+```powershell
+# Start services (CPU mode)
+.\make.ps1 up-cpu
+
+# Start services (GPU mode)
+.\make.ps1 up-gpu
+
+# Stop services
+.\make.ps1 down
+
+# Run backend locally
+.\make.ps1 api
+
+# Run frontend locally
+.\make.ps1 web
+
+# View logs
+.\make.ps1 logs
+```
+
+### Testing
+```powershell
+# Run all tests
+pytest tests/ -v --no-cov
+
+# Run specific test file
+pytest tests/test_api_analyze.py -v
+
+# Run with coverage
+pytest tests/ -v --cov
+```
+
+### Code Quality
+```powershell
+# Format code
+.\make.ps1 fmt
+
+# Clean build artifacts
+.\make.ps1 clean
+```
+
+---
+
+## When Making Changes
+
+1. **Read existing code** - understand patterns before adding new code
+2. **Follow established conventions** - consistency is key
+3. **Test thoroughly** - write tests for new features
+4. **Update documentation** - keep README and docs current
+5. **Check linting** - ensure code passes quality checks
+6. **Verify imports** - especially Python absolute imports
+7. **Test Docker build** - ensure containers work
+8. **Check API docs** - verify http://localhost:8000/docs
+
+---
+
+## Project-Specific Context
+
+- **Primary Platform**: Windows with PowerShell
+- **Database**: PostgreSQL (production), SQLite (testing)
+- **Object Storage**: MinIO (S3-compatible)
+- **Vector Database**: Qdrant for embeddings
+- **ML Inference**: NVIDIA Triton (GPU) or Mock (CPU)
+- **API Documentation**: Auto-generated at `/docs`
+- **Frontend Dev Server**: http://localhost:3000
+- **Backend Dev Server**: http://localhost:8000
+
+---
+
+## Remember
+
+- This is a production-ready system with **87% test coverage**
+- Maintain code quality and test coverage when adding features
+- Follow security best practices - this handles user uploads
+- Performance matters - optimize database queries and API responses
+- Documentation is crucial - future developers will thank you
+
+---
+
+**When in doubt, ask questions and look at existing code for patterns!**
+
