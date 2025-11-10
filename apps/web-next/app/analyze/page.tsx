@@ -49,9 +49,19 @@ export default function AnalyzePage() {
     setResp(null);
     setLoading(true);
 
+    console.log('🚀 Starting upload...', {
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+      apiBase,
+      url: `${apiBase}/v1/analyze`
+    });
+
     try {
       const form = new FormData();
       form.append('file', file);
+      
+      console.log('📤 Sending request to:', `${apiBase}/v1/analyze`);
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -64,15 +74,26 @@ export default function AnalyzePage() {
 
       clearTimeout(timeoutId);
 
+      console.log('📥 Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: response.statusText }));
+        console.error('❌ Error response:', errorData);
         throw new Error(errorData.detail || `เกิดข้อผิดพลาด: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log('✅ Success:', data);
       setResp(data);
     } catch (err) {
       let errorMessage = 'เกิดข้อผิดพลาดในการอัปโหลด';
+      
+      console.error('💥 Fetch error:', err);
       
       if (err instanceof Error) {
         if (err.name === 'AbortError') {

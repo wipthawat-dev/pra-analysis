@@ -3,7 +3,6 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-from contextlib import contextmanager
 import structlog
 
 logger = structlog.get_logger()
@@ -36,13 +35,11 @@ else:
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-@contextmanager
 def get_db():
-    """Database session context manager"""
+    """Database session dependency for FastAPI"""
     db = SessionLocal()
     try:
         yield db
-        db.commit()
     except Exception as e:
         db.rollback()
         logger.error("database_error", error=str(e))
