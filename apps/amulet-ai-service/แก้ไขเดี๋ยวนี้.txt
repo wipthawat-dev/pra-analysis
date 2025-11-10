@@ -1,0 +1,65 @@
+════════════════════════════════════════════════════════
+  แก้ปัญหา Python 3.13 - คัดลอกและรัน!
+════════════════════════════════════════════════════════
+
+ปัญหา: SQLAlchemy ไม่ทำงานกับ Python 3.13
+
+วิธีแก้ที่ 1: ลองใช้ SQLAlchemy เวอร์ชันใหม่สุด
+─────────────────────────────────────────────────────
+
+cd C:\wat\pra-analysis\pra-analysis\apps\amulet-ai-service
+
+.\venv\Scripts\Activate.ps1
+
+pip uninstall sqlalchemy -y
+
+pip install --pre sqlalchemy
+
+pip install fastapi uvicorn pydantic pytest httpx minio structlog qdrant-client pillow python-multipart pytest-asyncio pytest-cov
+
+pytest tests/ -v --no-cov
+
+
+วิธีแก้ที่ 2: ติดตั้ง Python 3.11 (แนะนำ)
+─────────────────────────────────────────────────────
+
+1. ดาวน์โหลด Python 3.11:
+   https://www.python.org/downloads/release/python-3119/
+
+2. ติดตั้ง (เลือก "Add to PATH")
+
+3. รันคำสั่ง:
+
+cd C:\wat\pra-analysis\pra-analysis\apps\amulet-ai-service
+
+Remove-Item venv -Recurse -Force
+
+py -3.11 -m venv venv
+
+.\venv\Scripts\Activate.ps1
+
+python --version
+
+.\INSTALL_ONE_BY_ONE.ps1
+
+pytest tests/ -v --no-cov
+
+
+════════════════════════════════════════════════════════
+  สำหรับคนรีบ - รันคำสั่งนี้
+════════════════════════════════════════════════════════
+
+cd C:\wat\pra-analysis\pra-analysis\apps\amulet-ai-service
+.\venv\Scripts\Activate.ps1
+pip uninstall sqlalchemy -y
+pip install --pre sqlalchemy
+pip install fastapi uvicorn pydantic pytest httpx minio structlog qdrant-client pillow python-multipart pytest-asyncio pytest-cov faker pytest-mock pydantic-settings
+pytest tests/ -v --no-cov
+
+
+════════════════════════════════════════════════════════
+หมายเหตุ: 
+- Tests จะใช้ SQLite in-memory (ไม่ต้องใช้ PostgreSQL)
+- ข้าม psycopg2-binary (ติดตั้งยากบน Windows + Python 3.13)
+════════════════════════════════════════════════════════
+

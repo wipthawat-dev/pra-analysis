@@ -1,7 +1,9 @@
 version: "3.9"
 services:
   web:
-    build: ./apps/web-next
+    build:
+      context: .
+      dockerfile: ./apps/web-next/Dockerfile
     container_name: web-next
     environment:
       - NEXT_PUBLIC_API_BASE=${NEXT_PUBLIC_API_BASE}
@@ -11,7 +13,9 @@ services:
       - api
 
   api:
-    build: ./apps/amulet-ai-service
+    build:
+      context: .
+      dockerfile: ./apps/amulet-ai-service/Dockerfile
     container_name: amulet-ai-service
     environment:
       - API_HOST=${API_HOST}
@@ -20,6 +24,15 @@ services:
       - QDRANT_URL=${QDRANT_URL}
       - QDRANT_COLLECTION=${QDRANT_COLLECTION}
       - EMBED_DIM=${EMBED_DIM}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-minio:9000}
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin}
+      - MINIO_SECURE=${MINIO_SECURE:-false}
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_DB=${POSTGRES_DB:-amulet_db}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
     volumes:
       - ./scripts:/app/scripts
       - ./ml/inference/triton_model_repo:/models
@@ -28,6 +41,8 @@ services:
     depends_on:
       - triton
       - qdrant
+      - minio
+      - postgres
 
   triton:
     image: nvcr.io/nvidia/tritonserver:24.05-py3
@@ -49,5 +64,38 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
 
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin}
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-amulet_db}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./shared/schemas/sql.sql:/docker-entrypoint-initdb.d/01-init.sql
+
 volumes:
   qdrant_data:
+  minio_data:
+  postgres_data:

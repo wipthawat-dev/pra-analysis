@@ -1,0 +1,36 @@
+# Windows-compatible requirements
+# Compatible with Python 3.11 and 3.12
+# For Python 3.13, use newer versions
+
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pillow==10.4.0
+
+# NumPy - may need Visual C++ Build Tools
+# If install fails, tests can run without it
+numpy>=1.24.0
+
+qdrant-client==1.9.2
+pydantic==2.9.2
+pydantic-settings==2.4.0
+structlog==24.1.0
+
+# Triton client - skip on Windows (use mock for testing)
+# tritonclient[grpc]==2.50.0  # Not needed for testing
+
+python-multipart==0.0.12
+minio==7.2.0
+
+# Use psycopg2-binary instead of psycopg2 (pre-compiled for Windows)
+psycopg2-binary==2.9.9
+
+# SQLAlchemy - use newer version for Python 3.13 compatibility
+# For Python 3.11/3.12: 2.0.23 works
+# For Python 3.13: need 2.0.30+
+sqlalchemy>=2.0.23
+
+# Skip asyncpg on Windows if problematic
+# asyncpg==0.29.0  # Use psycopg2 instead
+
+aiosqlite==0.19.0
+

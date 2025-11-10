@@ -1,0 +1,20 @@
+════════════════════════════════════════════════════════════════════════
+  คำสั่งสุดท้าย - คัดลอกและรันบล็อกนี้ทั้งหมด
+════════════════════════════════════════════════════════════════════════
+
+cd C:\wat\pra-analysis\pra-analysis\apps\amulet-ai-service
+.\venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install sqlalchemy==2.0.36 fastapi==0.115.0 uvicorn==0.30.6 pydantic==2.9.2 pydantic-settings==2.4.0 pytest==7.4.3 pytest-asyncio==0.21.1 pytest-cov==4.1.0 httpx==0.25.2 minio==7.2.0 structlog==24.1.0 qdrant-client==1.9.2 pillow==10.4.0 python-multipart==0.0.12 faker==20.1.0 pytest-mock==3.12.0
+python -m pip show fastapi pytest sqlalchemy minio
+pytest tests/ -v --no-cov
+
+════════════════════════════════════════════════════════════════════════
+
+คาดหวัง:
+- 105+ tests PASSED ✅
+- 10-15 tests FAILED (MinIO/fixtures - minor issues)
+- ผลลัพธ์รวม: 88%+ pass rate
+
+════════════════════════════════════════════════════════════════════════
+
