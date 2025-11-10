@@ -1,9 +1,22 @@
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, ForeignKey, Text, JSON
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, ForeignKey, Text, JSON
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import uuid
+import os
 from apps.amulet_ai_service.services.database import Base
+
+# Use JSON for SQLite compatibility, JSONB only works in PostgreSQL
+# For testing with SQLite, we use JSON type which works across both databases
+USE_SQLITE = os.getenv("USE_SQLITE", "false").lower() == "true"
+
+if USE_SQLITE:
+    # SQLite doesn't support JSONB, use JSON instead
+    JSONType = JSON
+else:
+    # PostgreSQL supports JSONB which is more efficient
+    from sqlalchemy.dialects.postgresql import JSONB
+    JSONType = JSONB
 
 class Image(Base):
     __tablename__ = "images"
@@ -12,7 +25,7 @@ class Image(Base):
     user_id = Column(UUID(as_uuid=True), nullable=True)
     upload_ts = Column(DateTime(timezone=True), server_default=func.now())
     mime = Column(String, nullable=True)
-    exif = Column(JSONB, nullable=True)
+    exif = Column(JSONType, nullable=True)
     c2pa_status = Column(String, nullable=True)
     source = Column(String, nullable=True)  # 'upload', 'minio_import', 'dataset'
     dataset_id = Column(UUID(as_uuid=True), ForeignKey("datasets.id"), nullable=True)
@@ -34,8 +47,8 @@ class Prediction(Base):
     model_version = Column(String, nullable=True)
     verdict = Column(String, nullable=True)
     score = Column(Integer, nullable=True)
-    topk = Column(JSONB, nullable=True)
-    heatmaps = Column(JSONB, nullable=True)
+    topk = Column(JSONType, nullable=True)
+    heatmaps = Column(JSONType, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     result_path = Column(String, nullable=True)  # Path to full result JSON in MinIO
     
@@ -66,7 +79,7 @@ class DatasetImage(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     dataset_id = Column(UUID(as_uuid=True), ForeignKey("datasets.id", ondelete="CASCADE"), nullable=False)
     image_id = Column(UUID(as_uuid=True), ForeignKey("images.id", ondelete="CASCADE"), nullable=False)
-    metadata = Column(JSONB, nullable=True)
+    image_metadata = Column(JSONType, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
@@ -80,8 +93,8 @@ class Label(Base):
     image_id = Column(UUID(as_uuid=True), ForeignKey("images.id", ondelete="CASCADE"), nullable=False)
     labeler_id = Column(UUID(as_uuid=True), nullable=True)
     verdict = Column(String, nullable=False)  # 'authentic', 'fake', 'uncertain'
-    bbox = Column(JSONB, nullable=True)
-    confidence = Column(Integer, nullable=True)
+    bbox = Column(JSONType, nullable=True)
+    confidence = Column(Float, nullable=True)  # 0.0-1.0 scale matching Pydantic schema
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -104,11 +117,11 @@ class TrainingJob(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     dataset_id = Column(UUID(as_uuid=True), ForeignKey("datasets.id"), nullable=True)
     model_type = Column(String, nullable=False)  # 'detector', 'embedder', 'classifier'
-    config = Column(JSONB, nullable=False)
+    config = Column(JSONType, nullable=False)
     status = Column(String, default="pending")  # 'pending', 'running', 'completed', 'failed', 'cancelled'
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
-    metrics = Column(JSONB, nullable=True)
+    metrics = Column(JSONType, nullable=True)
     model_version = Column(String, nullable=True)
     model_path = Column(String, nullable=True)  # Path to model artifacts in MinIO
     logs_path = Column(String, nullable=True)  # Path to training logs in MinIO
@@ -126,8 +139,8 @@ class Model(Base):
     model_type = Column(String, nullable=False)  # 'detector', 'embedder', 'classifier'
     training_job_id = Column(UUID(as_uuid=True), ForeignKey("training_jobs.id"), nullable=True)
     minio_path = Column(String, nullable=False)  # Path to model files in MinIO
-    config = Column(JSONB, nullable=True)
-    metrics = Column(JSONB, nullable=True)
+    config = Column(JSONType, nullable=True)
+    metrics = Column(JSONType, nullable=True)
     is_deployed = Column(Boolean, default=False)
     deployed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -162,7 +175,7 @@ class ImportJob(Base):
     total_files = Column(Integer, nullable=True)
     imported_files = Column(Integer, default=0)
     failed_files = Column(Integer, default=0)
-    error_log = Column(JSONB, nullable=True)
+    error_log = Column(JSONType, nullable=True)
     started_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

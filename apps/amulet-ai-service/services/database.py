@@ -2,21 +2,37 @@ import os
 from sqlalchemy import create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 from contextlib import contextmanager
 import structlog
 
 logger = structlog.get_logger()
 
-# Database connection
-POSTGRES_HOST = os.getenv("POSTGRES_HOST", "postgres")
-POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
-POSTGRES_DB = os.getenv("POSTGRES_DB", "amulet_db")
-POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")
-POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
+# Check if using SQLite for testing
+USE_SQLITE = os.getenv("USE_SQLITE", "false").lower() == "true"
 
-DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+if USE_SQLITE:
+    # Use SQLite for testing (easier on Windows, no psycopg2 required)
+    DATABASE_URL = "sqlite:///:memory:"
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+        echo=False
+    )
+    logger.info("database_mode", mode="SQLite (testing)")
+else:
+    # Use PostgreSQL for production/development
+    POSTGRES_HOST = os.getenv("POSTGRES_HOST", "postgres")
+    POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
+    POSTGRES_DB = os.getenv("POSTGRES_DB", "amulet_db")
+    POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")
+    POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
+    
+    DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+    engine = create_engine(DATABASE_URL, pool_pre_ping=True, echo=False)
+    logger.info("database_mode", mode="PostgreSQL")
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True, echo=False)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

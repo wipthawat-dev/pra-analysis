@@ -106,7 +106,7 @@ async def create_training_job(
         db.refresh(db_job)
         
         # Start training in background
-        from apps.amulet_ai_service.services.training_service import TrainingService
+        from services.training_service import TrainingService
         training_service = TrainingService(db)
         background_tasks.add_task(
             training_service.run_training_job,

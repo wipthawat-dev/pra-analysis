@@ -17,8 +17,8 @@ class TrainingService:
     async def run_training_job(self, job_id: UUID, model_type: str, config: Dict[str, Any]):
         """Run a training job asynchronously"""
         try:
-            from apps.amulet_ai_service.models.database_models import TrainingJob, Model
-            from apps.amulet_ai_service.services.minio_client import minio_client
+            from models.database_models import TrainingJob, Model
+            from services.minio_client import minio_client
             
             job = self.db.query(TrainingJob).filter(TrainingJob.id == job_id).first()
             if not job:
@@ -93,7 +93,7 @@ class TrainingService:
         await asyncio.sleep(2)  # Simulate training time
         
         # Mock metrics
-        from apps.amulet_ai_service.models.database_models import TrainingJob
+        from models.database_models import TrainingJob
         job = self.db.query(TrainingJob).filter(TrainingJob.id == job_id).first()
         if job:
             job.metrics = {
@@ -110,7 +110,7 @@ class TrainingService:
         import time
         await asyncio.sleep(2)
         
-        from apps.amulet_ai_service.models.database_models import TrainingJob
+        from models.database_models import TrainingJob
         job = self.db.query(TrainingJob).filter(TrainingJob.id == job_id).first()
         if job:
             job.metrics = {
@@ -127,7 +127,7 @@ class TrainingService:
         import time
         await asyncio.sleep(2)
         
-        from apps.amulet_ai_service.models.database_models import TrainingJob
+        from models.database_models import TrainingJob
         job = self.db.query(TrainingJob).filter(TrainingJob.id == job_id).first()
         if job:
             job.metrics = {

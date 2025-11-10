@@ -18,6 +18,21 @@ from datetime import datetime
 logger = structlog.get_logger()
 router = APIRouter(prefix="/v1/admin", tags=["admin"])
 
+@router.get("")
+def admin_root():
+    """Admin API root endpoint"""
+    return {
+        "name": "Admin API",
+        "endpoints": {
+            "datasets": "/v1/admin/datasets",
+            "models": "/v1/admin/models",
+            "training": "/v1/admin/training",
+            "labeling": "/v1/admin/labeling",
+            "import": "/v1/admin/import",
+            "feedback": "/v1/admin/feedback"
+        }
+    }
+
 @router.post("/datasets", response_model=DatasetResponse)
 async def create_dataset(dataset: DatasetCreate, db: Session = Depends(get_db)):
     """Create a new dataset"""

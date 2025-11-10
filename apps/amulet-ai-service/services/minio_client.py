@@ -14,13 +14,19 @@ class MinIOClient:
         secret_key = os.getenv("MINIO_SECRET_KEY", "minioadmin")
         secure = os.getenv("MINIO_SECURE", "false").lower() == "true"
         
+        # Check if in test mode - skip initialization if MinIO not available
+        self.test_mode = os.getenv("USE_SQLITE", "false").lower() == "true"
+        
         self.client = Minio(
             endpoint,
             access_key=access_key,
             secret_key=secret_key,
             secure=secure
         )
-        self._ensure_buckets()
+        
+        # Only ensure buckets if not in test mode or if MinIO is available
+        if not self.test_mode:
+            self._ensure_buckets()
     
     def _ensure_buckets(self):
         """Create default buckets if they don't exist"""
@@ -32,9 +38,21 @@ class MinIOClient:
                     logger.info("created_bucket", bucket=bucket)
             except S3Error as e:
                 logger.error("bucket_creation_failed", bucket=bucket, error=str(e))
+            except Exception as e:
+                # Connection error - skip in test mode
+                if self.test_mode:
+                    logger.warning("minio_unavailable_test_mode", bucket=bucket)
+                    return
+                else:
+                    raise
     
     def upload_image(self, bucket: str, object_name: str, data: bytes, content_type: str = "image/jpeg") -> str:
         """Upload image to MinIO"""
+        if self.test_mode:
+            # Mock upload in test mode
+            logger.info("minio_upload_mocked", bucket=bucket, object_name=object_name)
+            return f"{bucket}/{object_name}"
+        
         try:
             from io import BytesIO
             self.client.put_object(
@@ -69,6 +87,11 @@ class MinIOClient:
     
     def download_file(self, bucket: str, object_name: str) -> bytes:
         """Download file from MinIO"""
+        if self.test_mode:
+            # Mock download in test mode
+            logger.info("minio_download_mocked", bucket=bucket, object_name=object_name)
+            return b"mock file content"
+        
         try:
             response = self.client.get_object(bucket, object_name)
             data = response.read()
@@ -81,6 +104,11 @@ class MinIOClient:
     
     def upload_json(self, bucket: str, object_name: str, data: dict) -> str:
         """Upload JSON data to MinIO"""
+        if self.test_mode:
+            # Mock upload in test mode
+            logger.info("minio_json_upload_mocked", bucket=bucket, object_name=object_name)
+            return f"{bucket}/{object_name}"
+        
         try:
             json_str = json.dumps(data, ensure_ascii=False)
             json_bytes = json_str.encode('utf-8')
@@ -108,6 +136,11 @@ class MinIOClient:
     
     def list_objects(self, bucket: str, prefix: str = "", recursive: bool = True) -> List[str]:
         """List objects in bucket with optional prefix"""
+        if self.test_mode:
+            # Mock list in test mode
+            logger.info("minio_list_mocked", bucket=bucket, prefix=prefix)
+            return []
+        
         try:
             objects = self.client.list_objects(bucket, prefix=prefix, recursive=recursive)
             return [obj.object_name for obj in objects]
@@ -126,6 +159,10 @@ class MinIOClient:
     
     def get_presigned_url(self, bucket: str, object_name: str, expires_seconds: int = 3600) -> str:
         """Generate presigned URL for temporary access"""
+        if self.test_mode:
+            # Mock presigned URL in test mode
+            return f"http://localhost:9010/{bucket}/{object_name}?mock=true"
+        
         try:
             from datetime import timedelta
             url = self.client.presigned_get_object(bucket, object_name, expires=timedelta(seconds=expires_seconds))

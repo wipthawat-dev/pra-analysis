@@ -1,6 +1,7 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 import os, io
 from PIL import Image
 import numpy as np
@@ -63,6 +64,48 @@ def startup_event():
             vectors_config=VectorParams(size=EMBED_DIM, distance=Distance.COSINE),
         )
 
+@app.get("/")
+def root():
+    return {
+        "name": "amulet-ai-service",
+        "version": "0.1.0",
+        "status": "running",
+        "endpoints": {
+            "health": "/health",
+            "docs": "/docs",
+            "api": "/api",
+            "analyze": "/v1/analyze",
+            "admin": "/v1/admin"
+        }
+    }
+
+@app.get("/api")
+def api_root():
+    """API overview endpoint"""
+    return {
+        "name": "amulet-ai-service API",
+        "version": "0.1.0",
+        "description": "API endpoints for image analysis and admin operations",
+        "endpoints": {
+            "analyze": {
+                "path": "/v1/analyze",
+                "method": "POST",
+                "description": "Analyze an image for authenticity"
+            },
+            "admin": {
+                "path": "/v1/admin",
+                "method": "GET",
+                "description": "Admin API endpoints"
+            },
+            "feedback": {
+                "path": "/v1/feedback",
+                "method": "POST",
+                "description": "Submit feedback on predictions"
+            }
+        },
+        "documentation": "/docs"
+    }
+
 @app.get("/health")
 def health():
     return {"ok": True}
@@ -71,10 +114,7 @@ MAX_FILE_SIZE_MB = 15
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
 @app.post("/v1/analyze", response_model=AnalyzeResponse)
-async def analyze(file: UploadFile = File(...), db = None):
-    from apps.amulet_ai_service.services.database import get_db as get_db_func
-    db = next(get_db_func())
-    
+async def analyze(file: UploadFile = File(...), db: Session = Depends(get_db)):
     # Validate content type
     if not file.content_type:
         raise HTTPException(400, detail="Missing content type")
