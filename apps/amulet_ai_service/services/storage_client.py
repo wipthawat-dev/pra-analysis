@@ -22,9 +22,25 @@ class StorageClient:
         protocol = "https" if secure else "http"
         endpoint_url = f"{protocol}://{endpoint}"
         
+        # Main client for operations (uses internal Docker hostname)
         self.client = boto3.client(
             's3',
             endpoint_url=endpoint_url,
+            aws_access_key_id=access_key,
+            aws_secret_access_key=secret_key,
+            region_name=region,
+            config=boto3.session.Config(signature_version='s3v4')
+        )
+        
+        # Separate client for presigned URLs (uses localhost for browser access)
+        # Replace internal Docker hostnames with localhost
+        public_endpoint = endpoint.replace('seaweedfs-s3:8333', 'localhost:8333')
+        public_endpoint = public_endpoint.replace('ceph-rgw:9000', 'localhost:9000')
+        public_endpoint_url = f"{protocol}://{public_endpoint}"
+        
+        self.presigned_client = boto3.client(
+            's3',
+            endpoint_url=public_endpoint_url,
             aws_access_key_id=access_key,
             aws_secret_access_key=secret_key,
             region_name=region,
@@ -177,20 +193,24 @@ class StorageClient:
             return False
     
     def get_presigned_url(self, bucket: str, object_name: str, expires_seconds: int = 3600) -> str:
-        """Generate presigned URL for temporary access"""
+        """Generate presigned URL for temporary access
+        
+        Note: We use SeaweedFS Filer HTTP endpoint instead of S3 presigned URLs
+        because Filer provides direct HTTP access without signature issues when
+        accessing from browser using localhost.
+        """
         if self.test_mode:
             # Mock presigned URL in test mode
             return f"http://localhost:9010/{bucket}/{object_name}?mock=true"
         
         try:
-            url = self.client.generate_presigned_url(
-                'get_object',
-                Params={'Bucket': bucket, 'Key': object_name},
-                ExpiresIn=expires_seconds
-            )
-            return url
-        except ClientError as e:
-            logger.error("presigned_url_failed", bucket=bucket, object_name=object_name, error=str(e))
+            # Use SeaweedFS Filer HTTP endpoint for browser access
+            # Filer path format: /buckets/{bucket}/{object_key}
+            # This avoids S3 signature issues with localhost vs internal Docker hostnames
+            filer_url = f"http://localhost:8888/buckets/{bucket}/{object_name}"
+            return filer_url
+        except Exception as e:
+            logger.error("filer_url_generation_failed", bucket=bucket, object_name=object_name, error=str(e))
             raise
     
     def object_exists(self, bucket: str, object_name: str) -> bool:

@@ -23,7 +23,10 @@ class TestLabelingEndpoint:
             item = data[0]
             assert "id" in item
             assert "minio_path" in item
+            assert "presigned_url" in item  # Verify presigned_url is included
             assert "is_labeled" in item
+            assert "labels" in item
+            assert isinstance(item["labels"], list)
             assert item["is_labeled"] is False
     
     def test_get_labeling_queue_with_dataset_filter(self, client: TestClient, dataset_with_images):
@@ -109,6 +112,24 @@ class TestLabelingEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["verdict"] == "uncertain"
+    
+    def test_create_label_without_image_id_in_body(self, client: TestClient, sample_image_record: Image):
+        """Test creating label without image_id in body (should work with URL param only)"""
+        label_data = {
+            "verdict": "authentic",
+            "confidence": 0.90,
+            "notes": "Testing without image_id in body"
+        }
+        
+        response = client.post(
+            f"/v1/admin/labeling/{sample_image_record.id}",
+            json=label_data
+        )
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert data["verdict"] == "authentic"
+        assert data["image_id"] == str(sample_image_record.id)
     
     def test_create_label_with_bbox(self, client: TestClient, sample_image_record: Image):
         """Test creating label with bounding box"""

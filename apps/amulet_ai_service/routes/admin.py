@@ -174,13 +174,29 @@ async def list_dataset_images(
             DatasetImage.dataset_id == dataset_id
         ).offset(skip).limit(limit).all()
         
-        return [{
-            "id": str(img.id),
-            "minio_path": img.minio_path,
-            "mime": img.mime,
-            "is_labeled": img.is_labeled,
-            "upload_ts": img.upload_ts
-        } for img in images]
+        result = []
+        for img in images:
+            # Generate presigned URL for thumbnail
+            presigned_url = None
+            if img.minio_path:
+                try:
+                    bucket, object_name = img.minio_path.split("/", 1)
+                    presigned_url = storage_client.get_presigned_url(bucket, object_name)
+                except Exception as url_error:
+                    logger.warning("presigned_url_generation_failed", 
+                                 image_id=str(img.id), 
+                                 error=str(url_error))
+            
+            result.append({
+                "id": str(img.id),
+                "minio_path": img.minio_path,
+                "mime": img.mime,
+                "is_labeled": img.is_labeled,
+                "upload_ts": img.upload_ts,
+                "presigned_url": presigned_url
+            })
+        
+        return result
     except Exception as e:
         logger.error("list_images_failed", error=str(e))
         raise HTTPException(status_code=500, detail=str(e))

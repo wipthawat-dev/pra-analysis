@@ -179,12 +179,28 @@ export default function DatasetDetailPage() {
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {images.map((img) => (
-                <div key={img.id} className="border border-gray-200 rounded-lg p-2 hover:shadow-md transition-shadow">
-                  <div className="text-xs text-gray-600 mb-1 truncate">{img.id.slice(0, 8)}...</div>
-                  <div className={`text-xs px-2 py-1 rounded ${
-                    img.is_labeled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {img.is_labeled ? '✓ Labeled' : '○ Unlabeled'}
+                <div key={img.id} className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                  {img.presigned_url ? (
+                    <div className="aspect-square bg-gray-100 relative">
+                      <img 
+                        src={img.presigned_url} 
+                        alt={img.id.slice(0, 8)}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    </div>
+                  ) : (
+                    <div className="aspect-square bg-gray-100 flex items-center justify-center">
+                      <ImageIcon className="h-8 w-8 text-gray-400" />
+                    </div>
+                  )}
+                  <div className="p-2">
+                    <div className="text-xs text-gray-600 mb-1 truncate">{img.id.slice(0, 8)}...</div>
+                    <div className={`text-xs px-2 py-1 rounded text-center ${
+                      img.is_labeled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {img.is_labeled ? '✓ Labeled' : '○ Unlabeled'}
+                    </div>
                   </div>
                 </div>
               ))}

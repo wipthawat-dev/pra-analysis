@@ -46,7 +46,7 @@ class ImportJobResponse(BaseModel):
 
 # Labeling Schemas
 class LabelCreate(BaseModel):
-    image_id: UUID
+    image_id: Optional[UUID] = None  # Made optional since it's passed in URL
     verdict: str = Field(..., pattern="^(authentic|fake|uncertain)$")
     bbox: Optional[Dict[str, Any]] = None
     confidence: Optional[float] = Field(None, ge=0, le=1)
@@ -67,8 +67,9 @@ class LabelResponse(BaseModel):
         from_attributes = True
 
 class ImageLabelingResponse(BaseModel):
-    id: UUID
+    id: str  # Changed from UUID to str for frontend compatibility
     minio_path: Optional[str]
+    presigned_url: Optional[str]  # Added presigned URL field
     mime: Optional[str]
     is_labeled: bool
     labels: List[LabelResponse]
