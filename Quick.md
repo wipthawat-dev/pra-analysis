@@ -51,7 +51,7 @@ notepad .env
 **สำหรับ Development และ Testing ใช้ CPU Mode:**
 
 ```powershell
-# หยุด containers เก่า (ถ้ามี)
+# หยุด containers เก่า (ถ้ามี) - ข้อมูลจะถูกเก็บไว้
 .\make.ps1 down
 
 # รัน CPU mode
@@ -62,7 +62,9 @@ docker ps
 curl http://localhost:8000/health
 ```
 
-**หมายเหตุ:** CPU Mode ใช้ Mock Triton (ไม่ต้องใช้ GPU) เหมาะสำหรับการพัฒนา
+**หมายเหตุ:** 
+- CPU Mode ใช้ Mock Triton (ไม่ต้องใช้ GPU) เหมาะสำหรับการพัฒนา
+- คำสั่ง `down` จะเก็บข้อมูลทั้งหมดไว้ (PostgreSQL, Qdrant, SeaweedFS) สามารถ `up-cpu` ใหม่และใช้งานต่อได้ทันที
 
 ### CPU Mode (Development - ไม่ต้องใช้ GPU)
 
@@ -91,8 +93,16 @@ curl http://localhost:8000/health
 ### หยุด Containers
 
 ```powershell
+# หยุด containers (เก็บข้อมูลไว้)
 .\make.ps1 down
+
+# หยุด containers และลบข้อมูลทั้งหมด (ต้องพิมพ์ 'yes' เพื่อยืนยัน)
+.\make.ps1 down-clean
 ```
+
+**หมายเหตุ:**
+- 💾 `down` - หยุดแต่**เก็บข้อมูล**ไว้ (แนะนำสำหรับการใช้งานปกติ)
+- 🗑️ `down-clean` - หยุดและ**ลบข้อมูลทั้งหมด** (ใช้เมื่อต้องการเริ่มต้นใหม่)
 
 ### ตรวจสอบสถานะ
 
@@ -118,7 +128,7 @@ docker logs pra-analysis-web-1
 
 ```powershell
 # ไปที่โฟลเดอร์ backend
-cd apps\amulet-ai-service
+cd apps\amulet_ai_service
 
 # Activate virtual environment
 .\venv\Scripts\Activate.ps1
@@ -130,7 +140,7 @@ pytest tests/ -v --no-cov
 ### ติดตั้ง Dependencies (ถ้ายังไม่ได้ติดตั้ง)
 
 ```powershell
-cd apps\amulet-ai-service
+cd apps\amulet_ai_service
 .\venv\Scripts\Activate.ps1
 
 # Upgrade pip
@@ -241,8 +251,11 @@ start http://localhost:3000
 # เริ่ม services (GPU mode)
 .\make.ps1 up-gpu
 
-# หยุด services
+# หยุด services (เก็บข้อมูลไว้)
 .\make.ps1 down
+
+# หยุด services และลบข้อมูลทั้งหมด
+.\make.ps1 down-clean
 
 # ดู logs (real-time)
 .\make.ps1 logs
@@ -313,7 +326,7 @@ docker restart pra-analysis-api-1
 ```
 pra-analysis/
 ├── apps/
-│   ├── amulet-ai-service/      # FastAPI backend (Python 3.11+)
+│   ├── amulet_ai_service/      # FastAPI backend (Python 3.11+) - ใช้ underscore!
 │   │   ├── main.py             # API entry point
 │   │   ├── routes/             # API route handlers
 │   │   ├── services/           # Business logic layer
@@ -371,7 +384,7 @@ pra-analysis/
 ```powershell
 # ติดตั้ง Python 3.11 จาก python.org
 # จากนั้นสร้าง venv ใหม่
-cd apps\amulet-ai-service
+cd apps\amulet_ai_service
 Remove-Item venv -Recurse -Force
 py -3.11 -m venv venv
 .\venv\Scripts\Activate.ps1
@@ -527,8 +540,8 @@ docker-compose -f docker-compose.cpu.yml build api
 
 2. ถ้า SeaweedFS cluster ไม่ start:
    ```powershell
-   # ลบ volumes เก่า
-   .\make.ps1 down
+   # หยุดและลบ volumes เก่า (เริ่มต้นใหม่)
+   .\make.ps1 down-clean
    docker volume prune -f
    .\make.ps1 up-cpu
    # รอ 30-45 วินาทีสำหรับ SeaweedFS cluster initialization
@@ -545,9 +558,9 @@ docker-compose -f docker-compose.cpu.yml build api
    docker restart pra-analysis-api-1
    ```
 
-4. Rebuild ทุก containers:
+4. Rebuild ทุก containers และลบข้อมูลเก่า:
    ```powershell
-   .\make.ps1 down
+   .\make.ps1 down-clean
    docker system prune -f
    .\make.ps1 up-cpu
    ```
@@ -576,7 +589,7 @@ taskkill /PID <PID> /F
 **วิธีแก้:**
 
 ```powershell
-cd apps\amulet-ai-service
+cd apps\amulet_ai_service
 .\venv\Scripts\Activate.ps1
 
 # ติดตั้ง dependencies
@@ -598,7 +611,7 @@ pip install --pre sqlalchemy
 
 # Option 2: ใช้ Python 3.11 แทน (แนะนำ)
 # ดาวน์โหลด Python 3.11 จาก python.org
-cd apps\amulet-ai-service
+cd apps\amulet_ai_service
 Remove-Item venv -Recurse -Force
 py -3.11 -m venv venv
 .\venv\Scripts\Activate.ps1
@@ -699,13 +712,16 @@ cd ..\..
 
 ```powershell
 # รัน Docker + Tests แบบ one-shot
-.\make.ps1 up-cpu; Start-Sleep 10; cd apps\amulet-ai-service; .\venv\Scripts\Activate.ps1; pytest tests/ -v --no-cov
+.\make.ps1 up-cpu; Start-Sleep 10; cd apps\amulet_ai_service; .\venv\Scripts\Activate.ps1; pytest tests/ -v --no-cov
 
-# Clean everything และเริ่มใหม่
-.\make.ps1 down; .\make.ps1 clean; docker system prune -f; .\make.ps1 up-cpu
+# Clean everything และเริ่มใหม่ (ลบข้อมูลทั้งหมด)
+.\make.ps1 down-clean; .\make.ps1 clean; docker system prune -f; .\make.ps1 up-cpu
+
+# Restart แบบปกติ (เก็บข้อมูลไว้)
+.\make.ps1 down; .\make.ps1 up-cpu
 
 # ติดตั้ง dependencies แบบครบ
-cd apps\amulet-ai-service; .\venv\Scripts\Activate.ps1; pip install --upgrade pip; pip install -r requirements.txt
+cd apps\amulet_ai_service; .\venv\Scripts\Activate.ps1; pip install --upgrade pip; pip install -r requirements.txt
 ```
 
 ### สถิติโปรเจค
@@ -786,16 +802,24 @@ cd apps\amulet-ai-service; .\venv\Scripts\Activate.ps1; pip install --upgrade pi
 - แก้ SeaweedFS S3 flag error (`-ip` → `-ip.bind=0.0.0.0`)
 - แก้ API crash เมื่อ S3 ยังไม่พร้อม (graceful degradation)
 - เพิ่มคำแนะนำสำหรับ GPU error บน WSL/Windows
+- **แก้ volume persistence**: `.\make.ps1 down` จะเก็บข้อมูลไว้แล้ว (ไม่ลบ volumes)
+
+**✨ Features:**
+- **เพิ่มคำสั่ง `.\make.ps1 down-clean`** - สำหรับหยุดและลบข้อมูลทั้งหมด (ต้องยืนยันก่อนลบ)
+- Volume persistence: PostgreSQL, Qdrant, SeaweedFS data จะถูกเก็บไว้เมื่อใช้ `down`
 
 **📚 Documentation:**
 - เพิ่ม troubleshooting สำหรับปัญหา GPU mode
 - เพิ่ม troubleshooting สำหรับ SeaweedFS S3 errors
 - อัปเดต Quick Start guide
 - เพิ่มข้อมูลเปรียบเทียบ CPU vs GPU mode
+- แก้เส้นทางทั้งหมดจาก `amulet-ai-service` เป็น `amulet_ai_service` (underscore)
+- เพิ่มคำอธิบายเรื่อง volume management
 
 **🔧 Technical Changes:**
 - `docker-compose.cpu.yml`: แก้ไข seaweedfs-s3 command flags
 - `storage_client.py`: เปลี่ยนจาก `raise` เป็น `logger.warning` + `continue`
+- `make.ps1`: แยกคำสั่ง `down` (เก็บ volumes) และ `down-clean` (ลบทั้งหมด)
 
 ### v1.0.0 (พฤศจิกายน 2025)
 

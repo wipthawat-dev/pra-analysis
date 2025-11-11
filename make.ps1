@@ -14,7 +14,8 @@ function Show-Help {
     Write-Host "  up-gpu       - Start Docker containers (GPU version with Triton)" -ForegroundColor White
     Write-Host "  up-cpu       - Start Docker containers (CPU version, mock Triton)" -ForegroundColor White
     Write-Host "  up-prod      - Start Docker containers (Production mode)" -ForegroundColor White
-    Write-Host "  down         - Stop Docker containers and remove volumes" -ForegroundColor White
+    Write-Host "  down         - Stop Docker containers (keep data volumes)" -ForegroundColor White
+    Write-Host "  down-clean   - Stop Docker containers and remove ALL data" -ForegroundColor White
     Write-Host "  logs         - Show Docker logs (follow mode)" -ForegroundColor White
     Write-Host ""
     Write-Host "Development Commands:" -ForegroundColor Yellow
@@ -76,7 +77,7 @@ switch ($Command) {
         docker compose -f docker-compose.cpu.yml up -d --build
     }
     "down" {
-        Write-Host "🛑 Stopping Docker containers..." -ForegroundColor Yellow
+        Write-Host "🛑 Stopping Docker containers (keeping volumes/data)..." -ForegroundColor Yellow
         
         # Check if Docker is running
         $dockerRunning = $false
@@ -104,20 +105,22 @@ switch ($Command) {
             Write-Host "ℹ️  No containers are currently running" -ForegroundColor Cyan
         }
         
-        # Stop containers
+        # Stop containers WITHOUT removing volumes
         Write-Host "`n🛑 Stopping GPU compose..." -ForegroundColor Yellow
-        $gpuResult = docker compose -f docker-compose.gpu.yml down -v 2>&1
+        $gpuResult = docker compose -f docker-compose.gpu.yml down 2>&1
         if ($LASTEXITCODE -ne 0 -and $gpuResult -notmatch "No such file") {
             Write-Host "   GPU compose: $($gpuResult -join ' ')" -ForegroundColor Gray
         }
         
         Write-Host "🛑 Stopping CPU compose..." -ForegroundColor Yellow
-        $cpuResult = docker compose -f docker-compose.cpu.yml down -v 2>&1
+        $cpuResult = docker compose -f docker-compose.cpu.yml down 2>&1
         if ($LASTEXITCODE -ne 0 -and $cpuResult -notmatch "No such file") {
             Write-Host "   CPU compose: $($cpuResult -join ' ')" -ForegroundColor Gray
         }
         
-        Write-Host "`n✅ Docker cleanup completed!" -ForegroundColor Green
+        Write-Host "`n✅ Containers stopped! Data volumes are preserved." -ForegroundColor Green
+        Write-Host "   💾 Your data (PostgreSQL, Qdrant, SeaweedFS) is safe." -ForegroundColor Cyan
+        Write-Host "   📝 To remove all data, use: .\make.ps1 down-clean" -ForegroundColor Gray
         
         # Show remaining containers
         $remaining = docker ps -a --format "{{.Names}}" 2>$null
@@ -125,6 +128,50 @@ switch ($Command) {
             Write-Host "`n📋 Remaining containers (stopped):" -ForegroundColor Cyan
             $remaining | ForEach-Object { Write-Host "   - $_" -ForegroundColor Gray }
         }
+    }
+    "down-clean" {
+        Write-Host "🗑️  Stopping Docker containers and REMOVING ALL DATA..." -ForegroundColor Red
+        Write-Host "⚠️  WARNING: This will delete all volumes (PostgreSQL, Qdrant, SeaweedFS)" -ForegroundColor Yellow
+        Write-Host ""
+        
+        # Ask for confirmation
+        $confirmation = Read-Host "Type 'yes' to confirm deletion of all data"
+        if ($confirmation -ne "yes") {
+            Write-Host "❌ Operation cancelled" -ForegroundColor Yellow
+            return
+        }
+        
+        # Check if Docker is running
+        $dockerRunning = $false
+        try {
+            docker ps 2>&1 | Out-Null
+            if ($LASTEXITCODE -eq 0) {
+                $dockerRunning = $true
+            }
+        } catch {
+            $dockerRunning = $false
+        }
+        
+        if (-not $dockerRunning) {
+            Write-Host "⚠️  Docker Desktop is not running or not connected!" -ForegroundColor Yellow
+            Write-Host "   Please start Docker Desktop first, then try again." -ForegroundColor Yellow
+            return
+        }
+        
+        # Stop containers and remove volumes
+        Write-Host "`n🛑 Stopping GPU compose and removing volumes..." -ForegroundColor Yellow
+        $gpuResult = docker compose -f docker-compose.gpu.yml down -v 2>&1
+        if ($LASTEXITCODE -ne 0 -and $gpuResult -notmatch "No such file") {
+            Write-Host "   GPU compose: $($gpuResult -join ' ')" -ForegroundColor Gray
+        }
+        
+        Write-Host "🛑 Stopping CPU compose and removing volumes..." -ForegroundColor Yellow
+        $cpuResult = docker compose -f docker-compose.cpu.yml down -v 2>&1
+        if ($LASTEXITCODE -ne 0 -and $cpuResult -notmatch "No such file") {
+            Write-Host "   CPU compose: $($cpuResult -join ' ')" -ForegroundColor Gray
+        }
+        
+        Write-Host "`n✅ Cleanup completed! All data has been removed." -ForegroundColor Green
     }
     "logs" {
         Write-Host "📋 Showing Docker logs..." -ForegroundColor Cyan
