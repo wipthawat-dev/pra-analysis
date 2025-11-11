@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from models.database_models import (
+from apps.amulet_ai_service.models.database_models import (
     Image, Prediction, Dataset, DatasetImage, Label, TrainingJob, Model, Feedback, ImportJob
 )
 

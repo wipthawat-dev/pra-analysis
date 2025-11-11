@@ -2,7 +2,7 @@
 import pytest
 import uuid
 from fastapi.testclient import TestClient
-from models.database_models import Feedback, Prediction
+from apps.amulet_ai_service.models.database_models import Feedback, Prediction
 
 
 @pytest.mark.api

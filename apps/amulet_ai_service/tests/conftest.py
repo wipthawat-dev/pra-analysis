@@ -32,8 +32,8 @@ os.environ["S3_SECRET_KEY"] = "testminio123"
 os.environ["S3_SECURE"] = "false"
 os.environ["S3_REGION"] = "us-east-1"
 
-from services.database import Base, get_db, engine
-from models.database_models import (
+from apps.amulet_ai_service.services.database import Base, get_db, engine
+from apps.amulet_ai_service.models.database_models import (
     Image, Prediction, Dataset, DatasetImage, Label, TrainingJob, Model, Feedback, ImportJob
 )
 

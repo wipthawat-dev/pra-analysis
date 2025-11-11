@@ -3,7 +3,7 @@ import pytest
 import uuid
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
-from models.database_models import Dataset, Image
+from apps.amulet_ai_service.models.database_models import Dataset, Image
 
 
 @pytest.mark.api

@@ -2,7 +2,7 @@
 import pytest
 import uuid
 from fastapi.testclient import TestClient
-from models.database_models import Dataset, Image, Label
+from apps.amulet_ai_service.models.database_models import Dataset, Image, Label
 
 
 @pytest.mark.api
