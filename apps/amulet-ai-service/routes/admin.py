@@ -146,7 +146,7 @@ async def upload_images_to_dataset(
             uploaded_images.append({
                 "id": str(image_id),
                 "filename": file.filename,
-                "minio_path": minio_path
+                "minio_path": storage_path
             })
         
         db.commit()
