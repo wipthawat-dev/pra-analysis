@@ -9,7 +9,7 @@ from PIL import Image as PILImage
 import io
 
 from apps.amulet_ai_service.services.database import get_db
-from apps.amulet_ai_service.services.minio_client import minio_client
+from apps.amulet_ai_service.services.storage_client import storage_client
 from apps.amulet_ai_service.models.database_models import ImportJob, Dataset, Image, DatasetImage
 from apps.amulet_ai_service.schemas.admin_schemas import ImportJobCreate, ImportJobResponse
 
@@ -31,7 +31,7 @@ async def process_import_job(job_id: UUID, db: Session):
         prefix = job.minio_prefix or ""
         
         # List all objects in MinIO bucket with prefix
-        objects = minio_client.list_objects(bucket, prefix=prefix)
+        objects = storage_client.list_objects(bucket, prefix=prefix)
         
         # Filter image files
         image_extensions = {".jpg", ".jpeg", ".png", ".JPG", ".JPEG", ".PNG"}
@@ -47,7 +47,7 @@ async def process_import_job(job_id: UUID, db: Session):
         for obj_name in image_objects:
             try:
                 # Download image from MinIO
-                image_data = minio_client.download_file(bucket, obj_name)
+                image_data = storage_client.download_file(bucket, obj_name)
                 
                 # Validate image
                 img = PILImage.open(io.BytesIO(image_data))
@@ -126,7 +126,11 @@ async def create_import_job(
     
     # Check if bucket exists
     try:
-        if not minio_client.client.bucket_exists(import_job.minio_bucket):
+        try:
+            storage_client.client.head_bucket(Bucket=import_job.minio_bucket)
+        except:
+            pass
+        if False:
             raise HTTPException(status_code=404, detail=f"MinIO bucket '{import_job.minio_bucket}' not found")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to check bucket: {str(e)}")

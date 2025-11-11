@@ -1,0 +1,81 @@
+# Pra Analysis - Environment Configuration Template
+# Copy this file to .env and update values as needed
+# Command: cp ENV_TEMPLATE .env
+
+# ============================================================================
+# API Configuration
+# ============================================================================
+API_HOST=0.0.0.0
+API_PORT=8000
+NEXT_PUBLIC_API_BASE=http://localhost:8000
+
+# ============================================================================
+# SeaweedFS S3-Compatible Storage Configuration
+# ============================================================================
+# SeaweedFS S3 Gateway endpoint
+S3_ENDPOINT=seaweedfs-s3:8333
+
+# SeaweedFS S3 credentials (change in production!)
+S3_ACCESS_KEY=seaweedfs_admin
+S3_SECRET_KEY=seaweedfs_secret
+
+# S3 connection settings
+S3_SECURE=false
+S3_REGION=us-east-1
+
+# Optional: S3 domain name for production (leave empty for development)
+S3_DOMAIN_NAME=
+
+# ============================================================================
+# PostgreSQL Database Configuration
+# ============================================================================
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DB=amulet_db
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+
+# ============================================================================
+# Qdrant Vector Database Configuration
+# ============================================================================
+QDRANT_URL=http://qdrant:6333
+QDRANT_COLLECTION=amulet_clip_v1
+EMBED_DIM=768
+
+# ============================================================================
+# Triton Inference Server Configuration
+# ============================================================================
+# For CPU mode: mock://cpu-only
+# For GPU mode: triton:8001
+TRITON_GRPC_URL=mock://cpu-only
+
+# ============================================================================
+# Production Settings (for docker-compose.production.yml)
+# ============================================================================
+# Data storage path on host machine (Ubuntu production)
+DATA_PATH=/var/lib/pra-analysis
+
+# ============================================================================
+# Development/Testing Settings
+# ============================================================================
+# Use SQLite for testing (true/false)
+USE_SQLITE=false
+
+# ============================================================================
+# Notes for Production Deployment
+# ============================================================================
+# 1. Change all passwords and secret keys
+# 2. Set S3_SECURE=true if using HTTPS
+# 3. Update DATA_PATH to your preferred location
+# 4. Configure S3_DOMAIN_NAME if using custom domain
+# 5. Adjust POSTGRES_PASSWORD to a strong password
+# 6. Consider setting S3_ENDPOINT to your external URL in production
+
+# ============================================================================
+# SeaweedFS Architecture (Reference)
+# ============================================================================
+# Master Servers: seaweedfs-master1:9333, seaweedfs-master2:9334, seaweedfs-master3:9335
+# Volume Servers: seaweedfs-volume1:8080, seaweedfs-volume2:8081
+# Filer Server: seaweedfs-filer:8888
+# S3 Gateway: seaweedfs-s3:8333
+

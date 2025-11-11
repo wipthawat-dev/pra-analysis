@@ -7,7 +7,6 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
-from minio import Minio
 from io import BytesIO
 from PIL import Image as PILImage
 
@@ -27,10 +26,11 @@ os.environ["POSTGRES_PASSWORD"] = "testpass"
 os.environ["POSTGRES_DB"] = "testdb"
 os.environ["POSTGRES_HOST"] = "localhost"
 os.environ["POSTGRES_PORT"] = "5433"
-os.environ["MINIO_ENDPOINT"] = "localhost:9010"
-os.environ["MINIO_ACCESS_KEY"] = "testminio"
-os.environ["MINIO_SECRET_KEY"] = "testminio123"
-os.environ["MINIO_SECURE"] = "false"
+os.environ["S3_ENDPOINT"] = "localhost:9010"
+os.environ["S3_ACCESS_KEY"] = "testminio"
+os.environ["S3_SECRET_KEY"] = "testminio123"
+os.environ["S3_SECURE"] = "false"
+os.environ["S3_REGION"] = "us-east-1"
 
 from services.database import Base, get_db, engine
 from models.database_models import (

@@ -1,13 +1,11 @@
 FROM python:3.11-slim
 
 WORKDIR /app
-COPY apps/amulet-ai-service/requirements.txt /app/requirements.txt
+COPY apps/amulet_ai_service/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
 # Copy the entire apps directory to maintain the module structure
 COPY apps /app/apps
-# Rename amulet-ai-service to amulet_ai_service (Python modules can't have dashes)
-RUN mv /app/apps/amulet-ai-service /app/apps/amulet_ai_service
 # Copy scripts
 COPY scripts /app/scripts
 # Copy shared schemas (if directory exists, it will be copied)

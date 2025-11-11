@@ -410,18 +410,17 @@ items = db.query(MyModel).join(User).filter(User.email == email).all()
 count = db.query(MyModel).count()
 ```
 
-### Working with MinIO
+### Working with Object Storage (Ceph RGW)
 
 **Upload File:**
 ```python
-from apps.amulet_ai_service.services.minio_client import minio_client
+from apps.amulet_ai_service.services.storage_client import storage_client
 
 # Upload image
-minio_client.put_object(
-    bucket_name="images",
+storage_client.upload_image(
+    bucket="images",
     object_name=f"{user_id}/{filename}",
     data=file_data,
-    length=file_size,
     content_type="image/jpeg"
 )
 ```
@@ -429,21 +428,18 @@ minio_client.put_object(
 **Download File:**
 ```python
 # Get object
-response = minio_client.get_object(
-    bucket_name="images",
+data = storage_client.download_file(
+    bucket="images",
     object_name=f"{user_id}/{filename}"
 )
-data = response.read()
 ```
 
 **Generate Presigned URL:**
 ```python
-from datetime import timedelta
-
-url = minio_client.presigned_get_object(
-    bucket_name="images",
+url = storage_client.get_presigned_url(
+    bucket="images",
     object_name=f"{user_id}/{filename}",
-    expires=timedelta(hours=1)
+    expires_seconds=3600  # 1 hour
 )
 ```
 

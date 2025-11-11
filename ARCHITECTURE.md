@@ -35,7 +35,7 @@ Pra Analysis is an AI-powered image authenticity analysis system that combines c
 │  ┌────────────────────┐  │   │  ┌──────────────────────────┐  │
 │  │  Services          │  │   │  │  NVIDIA Triton           │  │
 │  │  - Database        │  │   │  │  (Port 8001)             │  │
-│  │  - MinIO Client    │  │   │  │  - Preprocessing         │  │
+│  │  - Storage Client  │  │   │  │  - Preprocessing         │  │
 │  │  - Training        │  │   │  │  - Detection Models      │  │
 │  │  - Retraining      │  │   │  │  - Classification        │  │
 │  └────────────────────┘  │   │  │  - Embedding             │  │
@@ -45,7 +45,7 @@ Pra Analysis is an AI-powered image authenticity analysis system that combines c
 ┌─────────────────────────────────────────────────────────────────┐
 │                       Data Layer                                 │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐  │
-│  │ PostgreSQL   │  │   MinIO      │  │      Qdrant          │  │
+│  │ PostgreSQL   │  │  Ceph RGW    │  │      Qdrant          │  │
 │  │ (Port 5432)  │  │ (Port 9000)  │  │    (Port 6333)       │  │
 │  │              │  │              │  │                      │  │
 │  │ - Metadata   │  │ - Images     │  │ - Vector Embeddings  │  │
@@ -137,7 +137,7 @@ amulet-ai-service/
 │   └── retraining.py
 ├── services/            # Business logic
 │   ├── database.py
-│   ├── minio_client.py
+│   ├── storage_client.py
 │   ├── training_service.py
 │   └── retraining_service.py
 ├── models/              # Database models
@@ -154,8 +154,8 @@ amulet-ai-service/
 - Transaction management
 - Session management
 
-**MinIO Service:**
-- Object storage client
+**Storage Service (Ceph RGW):**
+- S3-compatible object storage client
 - Image upload/download
 - Bucket management
 - Presigned URL generation
