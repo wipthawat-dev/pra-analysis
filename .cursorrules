@@ -16,7 +16,7 @@ This is **Pra Analysis** - an AI-powered image authenticity analysis system with
 ```
 pra-analysis/
 ├── apps/
-│   ├── amulet-ai-service/      # FastAPI backend
+│   ├── amulet_ai_service/      # FastAPI backend (underscore naming)
 │   │   ├── main.py             # Application entry point
 │   │   ├── routes/             # API route handlers
 │   │   ├── services/           # Business logic layer
@@ -39,6 +39,33 @@ pra-analysis/
 ---
 
 ## CRITICAL RULES - MUST FOLLOW
+
+### 0. Folder Naming Convention (CRITICAL)
+
+**🚨 ALWAYS use underscores (_) for Python package/module folder names!**
+
+✅ **CORRECT - Underscore naming:**
+```
+apps/amulet_ai_service/        # Python backend
+apps/amulet_ai_service/services/
+apps/amulet_ai_service/models/
+```
+
+❌ **WRONG - Dash/hyphen naming:**
+```
+apps/amulet-ai-service/        # Will cause import errors!
+apps/amulet-ai-service/services/
+```
+
+**Reason:** 
+- Python imports require valid Python identifiers (underscores allowed, dashes NOT allowed)
+- Dash folders were causing confusion and wrong file edits
+- Frontend folders can use kebab-case (e.g., `web-next/`), but Python folders MUST use underscores
+
+**⚠️ IMPORTANT:**
+- The project had duplicate folders (`amulet_ai_service` and `amulet-ai-service`) which caused editing the wrong files
+- Only `apps/amulet_ai_service/` (underscore) is the correct folder
+- `apps/amulet-ai-service/` (dash) has been deleted
 
 ### 1. Python Import Paths (ABSOLUTE IMPORTS ONLY)
 
@@ -243,7 +270,7 @@ enum UserRole {
 
 #### Backend Testing (pytest)
 - **100+ automated tests** - maintain this coverage
-- Test files: `test_*.py` in `apps/amulet-ai-service/tests/`
+- Test files: `test_*.py` in `apps/amulet_ai_service/tests/`
 - Use fixtures from `conftest.py`
 - Use SQLite for unit tests (set `USE_SQLITE=true`)
 - Mock external services (Triton, MinIO, Qdrant) when appropriate
@@ -494,21 +521,23 @@ export function AnalyzeForm() {
 
 ## Common Pitfalls to Avoid
 
-1. ❌ Using relative imports in Python backend
-2. ❌ Using Python 3.13 (compatibility issues)
-3. ❌ Not handling database sessions properly
-4. ❌ Using 'use client' unnecessarily in Next.js
-5. ❌ Not validating user inputs
-6. ❌ Exposing sensitive data in error messages
-7. ❌ Not testing code before committing
-8. ❌ Creating classes when functions suffice
-9. ❌ Not handling async operations properly
-10. ❌ Ignoring TypeScript errors
-11. ❌ **Changing SeaweedFS configuration without testing** (CRITICAL)
-12. ❌ **Raising exceptions during storage initialization** (causes API crash)
-13. ❌ **Using `-ip` flag instead of `-ip.bind` for SeaweedFS S3** (won't start)
-14. ❌ **Not waiting for SeaweedFS cluster to initialize** (30-45 seconds)
-15. ❌ **Modifying working code without understanding dependencies**
+1. ❌ **Using dashes in Python folder names** (use underscores: `amulet_ai_service` NOT `amulet-ai-service`)
+2. ❌ Using relative imports in Python backend
+3. ❌ Using Python 3.13 (compatibility issues)
+4. ❌ Not handling database sessions properly
+5. ❌ Using 'use client' unnecessarily in Next.js
+6. ❌ Not validating user inputs
+7. ❌ Exposing sensitive data in error messages
+8. ❌ Not testing code before committing
+9. ❌ Creating classes when functions suffice
+10. ❌ Not handling async operations properly
+11. ❌ Ignoring TypeScript errors
+12. ❌ **Changing SeaweedFS configuration without testing** (CRITICAL)
+13. ❌ **Raising exceptions during storage initialization** (causes API crash)
+14. ❌ **Using `-ip` flag instead of `-ip.bind` for SeaweedFS S3** (won't start)
+15. ❌ **Not waiting for SeaweedFS cluster to initialize** (30-45 seconds)
+16. ❌ **Modifying working code without understanding dependencies**
+17. ❌ **Editing files in wrong folder** (verify you're in `amulet_ai_service/` not `amulet-ai-service/`)
 
 ---
 
