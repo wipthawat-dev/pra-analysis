@@ -5,10 +5,11 @@ You are an expert in Python (FastAPI), TypeScript, Next.js 14, React, PostgreSQL
 ## Project Overview
 
 This is **Pra Analysis** - an AI-powered image authenticity analysis system with:
-- **Backend**: FastAPI (Python 3.11+), PostgreSQL, SQLAlchemy, MinIO, Qdrant
+- **Backend**: FastAPI (Python 3.11+), PostgreSQL, SQLAlchemy, SeaweedFS, Qdrant
 - **Frontend**: Next.js 14 App Router, React, Shadcn UI, Tailwind CSS
 - **ML/AI**: NVIDIA Triton, ONNX/TensorRT models, XAI utilities
 - **Infrastructure**: Docker (CPU/GPU modes), PowerShell automation
+- **Storage**: SeaweedFS (Apache 2.0) with High Availability cluster
 
 ## Project Structure
 
@@ -61,13 +62,70 @@ from ..services.database import get_db
 
 **Reason:** Docker container sets `PYTHONPATH=/app` and calls modules with absolute paths.
 
-### 2. Python Version Compatibility
+### 2. Storage Service - SeaweedFS (CRITICAL)
+
+**🚨 DO NOT change SeaweedFS configuration without understanding the entire system!**
+
+#### What is SeaweedFS?
+- **Distributed object storage** with S3-compatible API
+- **High Availability**: 3-master cluster with Raft consensus
+- **License**: Apache 2.0 (business-friendly)
+- **Performance**: Fast startup (~30s), low memory (~500MB)
+
+#### SeaweedFS Architecture (ALREADY CONFIGURED - DO NOT MODIFY)
+```yaml
+# docker-compose.cpu.yml - Working configuration
+seaweedfs-s3:
+  command: 's3 -filer=seaweedfs-filer:8888 -ip.bind=0.0.0.0 -port=8333 -config=/etc/seaweedfs/s3.json'
+  # ⚠️ IMPORTANT: Use -ip.bind=0.0.0.0 NOT -ip=seaweedfs-s3
+```
+
+#### Storage Client Pattern (ALREADY IMPLEMENTED - DO NOT MODIFY)
+```python
+# apps/amulet_ai_service/services/storage_client.py
+# ✅ CORRECT: Graceful degradation when S3 not ready
+def _ensure_buckets(self):
+    try:
+        self.client.head_bucket(Bucket=bucket)
+    except Exception as e:
+        # Log warning and continue - don't crash!
+        logger.warning("storage_unavailable_skipping_bucket", bucket=bucket, error=str(e))
+        continue  # ← CRITICAL: Don't raise exception during startup
+```
+
+#### SeaweedFS Best Practices
+1. **Startup Time**: Wait 30-45 seconds for cluster initialization
+2. **Graceful Degradation**: Services should start even if storage not ready
+3. **Health Checks**: All SeaweedFS containers have health checks
+4. **HA Cluster**: 3 masters (Raft), 2 volumes, 1 filer, 1 S3 gateway
+
+#### Common Mistakes to AVOID
+- ❌ Using `-ip` flag (should be `-ip.bind`)
+- ❌ Raising exceptions if S3 not ready during startup
+- ❌ Changing working SeaweedFS configuration
+- ❌ Removing health checks from containers
+- ❌ Modifying bucket initialization logic
+
+#### S3 Client Usage (boto3)
+```python
+# ✅ CORRECT: Use boto3 with SeaweedFS endpoint
+import boto3
+client = boto3.client(
+    's3',
+    endpoint_url='http://seaweedfs-s3:8333',
+    aws_access_key_id='seaweedfs_admin',
+    aws_secret_access_key='seaweedfs_secret',
+    region_name='us-east-1'
+)
+```
+
+### 3. Python Version Compatibility
 
 - **Use Python 3.11 or 3.12** (NOT 3.13 - SQLAlchemy compatibility issues)
 - Test all code with Python 3.11+ compatibility in mind
 - Use SQLite for unit testing, PostgreSQL for integration/production
 
-### 3. FastAPI Backend Standards
+### 4. FastAPI Backend Standards
 
 #### Code Structure
 - Keep routes in `routes/` (thin layer, delegate to services)
@@ -104,7 +162,7 @@ raise HTTPException(
 )
 ```
 
-### 4. Next.js Frontend Standards
+### 5. Next.js Frontend Standards
 
 #### File Structure
 - Use App Router (NOT Pages Router)
@@ -151,7 +209,7 @@ export function Example({ title, description }: ExampleProps) {
 - Minimize client-side state
 - Use React Server Components (RSC) patterns
 
-### 5. TypeScript Standards
+### 6. TypeScript Standards
 
 - **TypeScript for ALL frontend code**
 - Use interfaces over types
@@ -181,7 +239,7 @@ enum UserRole {
 }
 ```
 
-### 6. Testing Standards
+### 7. Testing Standards
 
 #### Backend Testing (pytest)
 - **100+ automated tests** - maintain this coverage
@@ -209,12 +267,17 @@ def test_analyze_endpoint(client: TestClient, sample_image):
 - Test user interactions, not implementation
 - Use semantic queries (getByRole, getByLabelText)
 
-### 7. Docker and Environment
+### 8. Docker and Environment
 
-#### Docker Compose
-- **CPU Mode**: `docker-compose.cpu.yml` (mock Triton)
-- **GPU Mode**: `docker-compose.gpu.yml` (real Triton)
+#### Docker Compose (WORKING CONFIGURATION - DO NOT MODIFY)
+- **CPU Mode**: `docker-compose.cpu.yml` (mock Triton) - **DEFAULT for development**
+- **GPU Mode**: `docker-compose.gpu.yml` (real Triton) - **REQUIRES NVIDIA GPU**
 - **Test Mode**: `docker-compose.test.yml` (for testing)
+
+**⚠️ CRITICAL: Docker Compose Files**
+- `docker-compose.cpu.yml` has been fixed for SeaweedFS - **DO NOT change seaweedfs-s3 command**
+- SeaweedFS cluster requires 7 containers (3 masters, 2 volumes, 1 filer, 1 s3)
+- All SeaweedFS services have health checks - **DO NOT remove them**
 
 #### Environment Variables
 - Always use `.env` file (copy from `.env.example`)
@@ -225,7 +288,18 @@ def test_analyze_endpoint(client: TestClient, sample_image):
 - Use `.\make.ps1` for automation (Windows primary platform)
 - Maintain compatibility with Unix Makefile
 
-### 8. Database Models and Migrations
+#### Container Startup Order (IMPORTANT)
+1. PostgreSQL, Qdrant (independent services)
+2. SeaweedFS masters (3-node Raft cluster)
+3. SeaweedFS volumes (depends on masters)
+4. SeaweedFS filer (depends on volumes)
+5. SeaweedFS S3 gateway (depends on filer)
+6. API (depends on all storage services)
+7. Web (depends on API)
+
+**Wait 30-45 seconds** after `.\make.ps1 up-cpu` for SeaweedFS cluster to initialize!
+
+### 9. Database Models and Migrations
 
 #### SQLAlchemy Models
 ```python
@@ -248,7 +322,7 @@ class Image(Base):
 - Auto-initialize on startup
 - Use migrations for production changes
 
-### 9. API Client Pattern (Frontend)
+### 10. API Client Pattern (Frontend)
 
 ```typescript
 // lib/api.ts
@@ -271,7 +345,7 @@ export async function analyzeImage(file: File) {
 }
 ```
 
-### 10. Security Best Practices
+### 11. Security Best Practices
 
 - Validate all user inputs (Pydantic for backend, Zod for frontend)
 - Sanitize file uploads (check MIME types, file sizes)
@@ -280,7 +354,7 @@ export async function analyzeImage(file: File) {
 - CORS configured properly in FastAPI
 - Never expose sensitive data in error messages
 
-### 11. Code Quality Standards
+### 12. Code Quality Standards
 
 #### Python (Backend)
 - Use **Black** for formatting
@@ -327,7 +401,7 @@ const hasError = false
 const shouldShowModal = false
 ```
 
-### 12. ML/AI Specific Rules
+### 13. ML/AI Specific Rules
 
 #### Triton Integration
 - Mock Triton in CPU mode (development)
@@ -340,14 +414,14 @@ const shouldShowModal = false
 - Store model metadata in database
 - Log model performance metrics
 
-### 13. Documentation Standards
+### 14. Documentation Standards
 
 - Update README files when adding features
 - Document API endpoints in FastAPI (auto-generates docs)
 - Add comments for complex business logic
 - Keep changelog updated
 
-### 14. Performance Optimization
+### 15. Performance Optimization
 
 #### Backend
 - Use database indexes appropriately
@@ -363,7 +437,7 @@ const shouldShowModal = false
 - Use Server Components when possible
 - Implement proper loading states
 
-### 15. Error Handling Patterns
+### 16. Error Handling Patterns
 
 #### Backend Error Response
 ```python
@@ -430,6 +504,11 @@ export function AnalyzeForm() {
 8. ❌ Creating classes when functions suffice
 9. ❌ Not handling async operations properly
 10. ❌ Ignoring TypeScript errors
+11. ❌ **Changing SeaweedFS configuration without testing** (CRITICAL)
+12. ❌ **Raising exceptions during storage initialization** (causes API crash)
+13. ❌ **Using `-ip` flag instead of `-ip.bind` for SeaweedFS S3** (won't start)
+14. ❌ **Not waiting for SeaweedFS cluster to initialize** (30-45 seconds)
+15. ❌ **Modifying working code without understanding dependencies**
 
 ---
 
@@ -496,24 +575,98 @@ pytest tests/ -v --cov
 
 - **Primary Platform**: Windows with PowerShell
 - **Database**: PostgreSQL (production), SQLite (testing)
-- **Object Storage**: MinIO (S3-compatible)
+- **Object Storage**: SeaweedFS (S3-compatible, Apache 2.0 license)
+  - **Architecture**: 3 masters + 2 volumes + 1 filer + 1 S3 gateway
+  - **High Availability**: Raft consensus cluster
+  - **S3 Endpoint**: http://localhost:8333 (or seaweedfs-s3:8333 in Docker)
+  - **Credentials**: seaweedfs_admin / seaweedfs_secret
 - **Vector Database**: Qdrant for embeddings
 - **ML Inference**: NVIDIA Triton (GPU) or Mock (CPU)
 - **API Documentation**: Auto-generated at `/docs`
 - **Frontend Dev Server**: http://localhost:3000
 - **Backend Dev Server**: http://localhost:8000
 
+### Container Architecture (11 services in CPU mode)
+1. pra-analysis-api-1 (FastAPI backend)
+2. pra-analysis-web-1 (Next.js frontend)
+3. pra-analysis-postgres-1 (PostgreSQL database)
+4. pra-analysis-qdrant-1 (Vector database)
+5. seaweedfs-master1 (Raft leader/follower)
+6. seaweedfs-master2 (Raft leader/follower)
+7. seaweedfs-master3 (Raft leader/follower)
+8. seaweedfs-volume1 (Data storage)
+9. seaweedfs-volume2 (Data storage)
+10. seaweedfs-filer (File system interface)
+11. seaweedfs-s3 (S3 API gateway)
+
+### Important URLs
+- **API**: http://localhost:8000
+- **API Docs**: http://localhost:8000/docs
+- **Frontend**: http://localhost:3000
+- **PostgreSQL**: localhost:5432
+- **Qdrant**: http://localhost:6333
+- **SeaweedFS S3**: http://localhost:8333
+- **SeaweedFS Filer**: http://localhost:8888
+- **SeaweedFS Masters**: http://localhost:9333, 9334, 9335
+
 ---
 
 ## Remember
 
-- This is a production-ready system with **87% test coverage**
+- This is a production-ready system with **87% test coverage** (230+ tests)
 - Maintain code quality and test coverage when adding features
 - Follow security best practices - this handles user uploads
 - Performance matters - optimize database queries and API responses
 - Documentation is crucial - future developers will thank you
 
+### ⚠️ CRITICAL: What NOT to Change
+
+**These components are working perfectly - DO NOT MODIFY without explicit request:**
+
+1. **SeaweedFS Configuration** (`docker-compose.cpu.yml`)
+   - seaweedfs-s3 command: `s3 -filer=seaweedfs-filer:8888 -ip.bind=0.0.0.0 -port=8333`
+   - Health checks for all SeaweedFS containers
+   - Master cluster configuration (Raft consensus)
+
+2. **Storage Client** (`apps/amulet_ai_service/services/storage_client.py`)
+   - `_ensure_buckets()` method with graceful degradation
+   - Exception handling that logs warnings instead of crashing
+   - Bucket initialization logic
+
+3. **Docker Compose Structure**
+   - Container dependencies and startup order
+   - Volume mounts and network configuration
+   - Environment variables
+
+4. **Working API Endpoints**
+   - Do not change existing routes without understanding full impact
+   - Do not modify response formats without updating frontend
+
+5. **Test Suite**
+   - 230+ tests that pass - maintain this
+   - Do not remove or skip tests to make changes work
+   - If tests fail, fix your code, not the tests
+
+### 🎯 Version Information
+
+- **Current Version**: v1.1.0 (11 November 2025)
+- **Storage**: Migrated from Ceph RGW to SeaweedFS (Apache 2.0)
+- **Recent Fixes**:
+  - ✅ SeaweedFS S3 flag error (`-ip` → `-ip.bind=0.0.0.0`)
+  - ✅ API startup resilience (graceful degradation when S3 not ready)
+  - ✅ GPU mode compatibility (use CPU mode for development)
+
+### 📋 Before Making ANY Changes
+
+1. **Read the existing code** - understand the pattern
+2. **Check related tests** - ensure you know what they test
+3. **Review documentation** - check Quick.md, README.md, and inline comments
+4. **Test locally first** - use `.\make.ps1 up-cpu` and verify
+5. **Ask if unsure** - better to clarify than break working code
+
 ---
 
 **When in doubt, ask questions and look at existing code for patterns!**
+
+**If it works, don't change it unless explicitly requested!**
 

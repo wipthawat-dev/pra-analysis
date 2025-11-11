@@ -1,5 +1,11 @@
 # Quick Start Guide - Pra Analysis
 
+> **🎉 อัปเดตล่าสุด (v1.1.0 - 11 พฤศจิกายน 2025)**  
+> ✅ แก้ไข SeaweedFS S3 startup error  
+> ✅ แก้ไข API crash เมื่อ storage ยังไม่พร้อม  
+> ✅ รองรับการรันใน CPU Mode โดยไม่ต้องใช้ GPU  
+> 📚 [ดู Changelog ฉบับสมบูรณ์](#-changelog)
+
 ## 📋 สารบัญ
 
 1. [เริ่มต้นใช้งาน](#เริ่มต้นใช้งาน)
@@ -40,17 +46,47 @@ notepad .env
 
 ## 🐳 รัน Docker Containers
 
+### ⚡ Quick Start (แนะนำ)
+
+**สำหรับ Development และ Testing ใช้ CPU Mode:**
+
+```powershell
+# หยุด containers เก่า (ถ้ามี)
+.\make.ps1 down
+
+# รัน CPU mode
+.\make.ps1 up-cpu
+
+# รอ 30-45 วินาที แล้วตรวจสอบ
+docker ps
+curl http://localhost:8000/health
+```
+
+**หมายเหตุ:** CPU Mode ใช้ Mock Triton (ไม่ต้องใช้ GPU) เหมาะสำหรับการพัฒนา
+
 ### CPU Mode (Development - ไม่ต้องใช้ GPU)
 
 ```powershell
 .\make.ps1 up-cpu
 ```
 
+**ข้อดี:**
+- ✅ ไม่ต้องการ NVIDIA GPU
+- ✅ รันได้บนเครื่องทุกเครื่อง (Windows/Mac/Linux)
+- ✅ Start เร็วกว่า
+- ✅ ใช้ memory น้อยกว่า
+- ✅ เหมาะสำหรับ development และ testing
+
 ### GPU Mode (Production - ต้องการ NVIDIA GPU)
 
 ```powershell
 .\make.ps1 up-gpu
 ```
+
+**ความต้องการ:**
+- ❗ NVIDIA GPU (CUDA-compatible)
+- ❗ NVIDIA Docker runtime
+- ❗ NVIDIA Container Toolkit
 
 ### หยุด Containers
 
@@ -742,10 +778,40 @@ cd apps\amulet-ai-service; .\venv\Scripts\Activate.ps1; pip install --upgrade pi
 
 ---
 
+## 📝 Changelog
+
+### v1.1.0 (11 พฤศจิกายน 2025)
+
+**🐛 Bug Fixes:**
+- แก้ SeaweedFS S3 flag error (`-ip` → `-ip.bind=0.0.0.0`)
+- แก้ API crash เมื่อ S3 ยังไม่พร้อม (graceful degradation)
+- เพิ่มคำแนะนำสำหรับ GPU error บน WSL/Windows
+
+**📚 Documentation:**
+- เพิ่ม troubleshooting สำหรับปัญหา GPU mode
+- เพิ่ม troubleshooting สำหรับ SeaweedFS S3 errors
+- อัปเดต Quick Start guide
+- เพิ่มข้อมูลเปรียบเทียบ CPU vs GPU mode
+
+**🔧 Technical Changes:**
+- `docker-compose.cpu.yml`: แก้ไข seaweedfs-s3 command flags
+- `storage_client.py`: เปลี่ยนจาก `raise` เป็น `logger.warning` + `continue`
+
+### v1.0.0 (พฤศจิกายน 2025)
+
+**🎉 Major Changes:**
+- Migration จาก Ceph RGW → SeaweedFS
+- High Availability: 3-master cluster with Raft consensus
+- Improved startup time: 60-90s → 30s
+- Reduced memory usage: ~2GB → ~500MB
+- Better license: LGPL → Apache 2.0
+
+---
+
 **อัปเดตล่าสุด:** 11 พฤศจิกายน 2025 (v1.1.0)  
 **สถานะ:** ✅ ทำงานสมบูรณ์ | 230+ Tests | 87% Coverage  
 **Storage:** SeaweedFS (Apache 2.0) with HA cluster  
 **Python Version:** 3.11 หรือ 3.12 (ห้าม 3.13!)  
 **Docker Mode:** CPU (development) / GPU (production)  
-**Bugs Fixed:** SeaweedFS S3, API startup resilience, GPU mode
+**Latest Fixes:** SeaweedFS S3, API startup resilience, GPU mode
 
