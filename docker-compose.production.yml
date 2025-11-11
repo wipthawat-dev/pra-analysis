@@ -1,0 +1,467 @@
+version: "3.9"
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: ./apps/web-next/Dockerfile
+    container_name: web-next-prod
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_BASE=${NEXT_PUBLIC_API_BASE}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - pra-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  api:
+    build:
+      context: .
+      dockerfile: ./apps/amulet_ai_service/Dockerfile
+    container_name: amulet-ai-service-prod
+    environment:
+      - API_HOST=${API_HOST:-0.0.0.0}
+      - API_PORT=${API_PORT:-8000}
+      - TRITON_GRPC_URL=${TRITON_GRPC_URL}
+      - QDRANT_URL=${QDRANT_URL:-http://qdrant:6333}
+      - QDRANT_COLLECTION=${QDRANT_COLLECTION:-amulet_clip_v1}
+      - EMBED_DIM=${EMBED_DIM:-768}
+      - S3_ENDPOINT=${S3_ENDPOINT:-seaweedfs-s3:8333}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY:-seaweedfs_admin}
+      - S3_SECRET_KEY=${S3_SECRET_KEY:-seaweedfs_secret}
+      - S3_SECURE=${S3_SECURE:-false}
+      - S3_REGION=${S3_REGION:-us-east-1}
+      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_DB=${POSTGRES_DB:-amulet_db}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - ./scripts:/app/scripts:ro
+      - ./ml/inference/triton_model_repo:/models:ro
+    ports:
+      - "8000:8000"
+    depends_on:
+      - triton
+      - qdrant
+      - seaweedfs-s3
+      - postgres
+    restart: unless-stopped
+    networks:
+      - pra-network
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          cpus: '2'
+          memory: 4G
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  triton:
+    image: nvcr.io/nvidia/tritonserver:24.05-py3
+    container_name: triton-prod
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    command: ["tritonserver", "--model-repository=/models", "--model-control-mode=poll", "--repository-poll-secs=60"]
+    volumes:
+      - ./ml/inference/triton_model_repo:/models:ro
+    ports:
+      - "8001:8001"
+      - "8002:8002"
+    restart: unless-stopped
+    networks:
+      - pra-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/v2/health/ready || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant-prod
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: unless-stopped
+    networks:
+      - pra-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:6333/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # SeaweedFS Master Servers (HA Configuration - Production)
+  seaweedfs-master1:
+    image: chrislusf/seaweedfs:latest
+    container_name: seaweedfs-master1-prod
+    command: 'master -ip=seaweedfs-master1 -port=9333 -peers=seaweedfs-master1:9333,seaweedfs-master2:9334,seaweedfs-master3:9335 -mdir=/data -defaultReplication=010 -volumeSizeLimitMB=30000'
+    ports:
+      - "9333:9333"
+      - "19333:19333"
+    volumes:
+      - seaweedfs_master1:/data
+      - /backup/seaweedfs/master1:/backup
+    environment:
+      - WEED_MASTER_VOLUME_GROWTH_COPY_1=1
+      - WEED_MASTER_VOLUME_GROWTH_COPY_2=2
+      - WEED_MASTER_VOLUME_GROWTH_COPY_3=3
+    restart: unless-stopped
+    networks:
+      - pra-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9333/cluster/status || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  seaweedfs-master2:
+    image: chrislusf/seaweedfs:latest
+    container_name: seaweedfs-master2-prod
+    command: 'master -ip=seaweedfs-master2 -port=9334 -peers=seaweedfs-master1:9333,seaweedfs-master2:9334,seaweedfs-master3:9335 -mdir=/data -defaultReplication=010 -volumeSizeLimitMB=30000'
+    ports:
+      - "9334:9334"
+      - "19334:19334"
+    volumes:
+      - seaweedfs_master2:/data
+      - /backup/seaweedfs/master2:/backup
+    environment:
+      - WEED_MASTER_VOLUME_GROWTH_COPY_1=1
+      - WEED_MASTER_VOLUME_GROWTH_COPY_2=2
+      - WEED_MASTER_VOLUME_GROWTH_COPY_3=3
+    restart: unless-stopped
+    networks:
+      - pra-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9334/cluster/status || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  seaweedfs-master3:
+    image: chrislusf/seaweedfs:latest
+    container_name: seaweedfs-master3-prod
+    command: 'master -ip=seaweedfs-master3 -port=9335 -peers=seaweedfs-master1:9333,seaweedfs-master2:9334,seaweedfs-master3:9335 -mdir=/data -defaultReplication=010 -volumeSizeLimitMB=30000'
+    ports:
+      - "9335:9335"
+      - "19335:19335"
+    volumes:
+      - seaweedfs_master3:/data
+      - /backup/seaweedfs/master3:/backup
+    environment:
+      - WEED_MASTER_VOLUME_GROWTH_COPY_1=1
+      - WEED_MASTER_VOLUME_GROWTH_COPY_2=2
+      - WEED_MASTER_VOLUME_GROWTH_COPY_3=3
+    restart: unless-stopped
+    networks:
+      - pra-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9335/cluster/status || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # SeaweedFS Volume Servers (Production with increased capacity)
+  seaweedfs-volume1:
+    image: chrislusf/seaweedfs:latest
+    container_name: seaweedfs-volume1-prod
+    command: 'volume -mserver=seaweedfs-master1:9333,seaweedfs-master2:9334,seaweedfs-master3:9335 -ip=seaweedfs-volume1 -port=8080 -max=500 -dir=/data -compactionMBps=50'
+    ports:
+      - "8080:8080"
+      - "18080:18080"
+    volumes:
+      - seaweedfs_volume1:/data
+      - /backup/seaweedfs/volume1:/backup
+    depends_on:
+      - seaweedfs-master1
+      - seaweedfs-master2
+      - seaweedfs-master3
+    restart: unless-stopped
+    networks:
+      - pra-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/status || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  seaweedfs-volume2:
+    image: chrislusf/seaweedfs:latest
+    container_name: seaweedfs-volume2-prod
+    command: 'volume -mserver=seaweedfs-master1:9333,seaweedfs-master2:9334,seaweedfs-master3:9335 -ip=seaweedfs-volume2 -port=8080 -max=500 -dir=/data -compactionMBps=50'
+    ports:
+      - "8081:8080"
+      - "18081:18080"
+    volumes:
+      - seaweedfs_volume2:/data
+      - /backup/seaweedfs/volume2:/backup
+    depends_on:
+      - seaweedfs-master1
+      - seaweedfs-master2
+      - seaweedfs-master3
+    restart: unless-stopped
+    networks:
+      - pra-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/status || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # SeaweedFS Filer (Filesystem Interface - Production)
+  seaweedfs-filer:
+    image: chrislusf/seaweedfs:latest
+    container_name: seaweedfs-filer-prod
+    command: 'filer -master=seaweedfs-master1:9333,seaweedfs-master2:9334,seaweedfs-master3:9335 -ip=seaweedfs-filer -port=8888 -defaultReplicaPlacement=010'
+    ports:
+      - "8888:8888"
+      - "18888:18888"
+    volumes:
+      - seaweedfs_filer:/data
+      - ./config/seaweedfs:/etc/seaweedfs:ro
+    depends_on:
+      - seaweedfs-master1
+      - seaweedfs-master2
+      - seaweedfs-master3
+      - seaweedfs-volume1
+      - seaweedfs-volume2
+    restart: unless-stopped
+    networks:
+      - pra-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8888/ || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # SeaweedFS S3 Gateway (S3-Compatible API - Production)
+  seaweedfs-s3:
+    image: chrislusf/seaweedfs:latest
+    container_name: seaweedfs-s3-prod
+    command: 's3 -filer=seaweedfs-filer:8888 -ip=seaweedfs-s3 -port=8333 -config=/etc/seaweedfs/s3.json -allowEmptyFolder=false -allowDeleteBucketNotEmpty=false'
+    ports:
+      - "8333:8333"
+    environment:
+      - WEED_ACCESS_KEY_ID=${SEAWEEDFS_ACCESS_KEY:-seaweedfs_admin}
+      - WEED_SECRET_ACCESS_KEY=${SEAWEEDFS_SECRET_KEY:-seaweedfs_secret}
+    volumes:
+      - ./config/seaweedfs:/etc/seaweedfs:ro
+    depends_on:
+      - seaweedfs-filer
+    restart: unless-stopped
+    networks:
+      - pra-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8333/ || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres-prod
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-amulet_db}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=en_US.UTF-8 --lc-ctype=en_US.UTF-8
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./shared/schemas/sql.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - /backup/postgres:/backup
+    restart: unless-stopped
+    networks:
+      - pra-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+        reservations:
+          cpus: '1'
+          memory: 2G
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Nginx reverse proxy (optional, for production SSL termination)
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: nginx-prod
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./config/nginx:/etc/nginx/conf.d:ro
+  #     - ./config/ssl:/etc/ssl/certs:ro
+  #   depends_on:
+  #     - web
+  #     - api
+  #   restart: unless-stopped
+  #   networks:
+  #     - pra-network
+
+networks:
+  pra-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+volumes:
+  qdrant_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/pra-analysis/qdrant
+  seaweedfs_master1:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/pra-analysis/seaweedfs/master1
+  seaweedfs_master2:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/pra-analysis/seaweedfs/master2
+  seaweedfs_master3:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/pra-analysis/seaweedfs/master3
+  seaweedfs_volume1:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/pra-analysis/seaweedfs/volume1
+  seaweedfs_volume2:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/pra-analysis/seaweedfs/volume2
+  seaweedfs_filer:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/pra-analysis/seaweedfs/filer
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/pra-analysis/postgres

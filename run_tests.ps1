@@ -22,7 +22,7 @@ Write-Host ""
 
 # Run backend tests
 Write-Host "=== Running Backend Tests ===" -ForegroundColor Cyan
-Set-Location apps/amulet-ai-service
+Set-Location apps/amulet_ai_service
 
 # Install test dependencies if needed
 if (-not (Test-Path "venv")) {
@@ -81,7 +81,7 @@ Write-Host ""
 Write-Host "=== Test Summary ===" -ForegroundColor Cyan
 Write-Host "Backend tests completed!" -ForegroundColor Green
 Write-Host ""
-Write-Host "To view coverage report, open: apps/amulet-ai-service/htmlcov/index.html" -ForegroundColor Yellow
+Write-Host "To view coverage report, open: apps/amulet_ai_service/htmlcov/index.html" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "To stop test containers: docker-compose -f docker-compose.test.yml down" -ForegroundColor Yellow
 

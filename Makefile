@@ -22,15 +22,15 @@ logs:
 
 fmt:
 	@echo "✨ Formatting code..."
-	black apps/amulet-ai-service ml || true
-	ruff check --fix apps/amulet-ai-service ml || true
+	black apps/amulet_ai_service ml || true
+	ruff check --fix apps/amulet_ai_service ml || true
 	prettier -w apps/web-next || true
 	@echo "✅ Code formatting completed"
 
 api:
 	@echo "🔧 Starting API server..."
 	@echo "   Make sure you have Python dependencies installed:"
-	@echo "   pip install -r apps/amulet-ai-service/requirements.txt"
+	@echo "   pip install -r apps/amulet_ai_service/requirements.txt"
 	PYTHONPATH=. uvicorn apps.amulet_ai_service.main:app --reload --host 0.0.0.0 --port 8000
 
 web:

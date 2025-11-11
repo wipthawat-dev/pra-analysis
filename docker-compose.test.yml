@@ -17,20 +17,28 @@ services:
       timeout: 5s
       retries: 5
 
-  minio-test:
-    image: minio/minio:latest
-    command: server /data --console-address ":9001"
+  ceph-rgw-test:
+    image: quay.io/ceph/demo:latest
     environment:
-      MINIO_ROOT_USER: testminio
-      MINIO_ROOT_PASSWORD: testminio123
+      - MON_IP=0.0.0.0
+      - CEPH_PUBLIC_NETWORK=0.0.0.0/0
+      - CEPH_DEMO_UID=test-admin
+      - CEPH_DEMO_ACCESS_KEY=testceph
+      - CEPH_DEMO_SECRET_KEY=testceph123
+      - CEPH_DEMO_BUCKET=test-bucket
+      - RGW_CIVETWEB_PORT=9000
+      - NETWORK_AUTO_DETECT=4
     ports:
       - "9010:9000"
-      - "9011:9001"
+    cap_add:
+      - ALL
+    privileged: true
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      test: ["CMD-SHELL", "ceph health | grep -q HEALTH_OK || ceph health | grep -q HEALTH_WARN"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
 
   qdrant-test:
     image: qdrant/qdrant:latest
