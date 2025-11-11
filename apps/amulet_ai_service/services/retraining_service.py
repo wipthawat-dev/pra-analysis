@@ -16,7 +16,7 @@ class RetrainingService:
     def collect_misclassified_images(self, limit: int = 100) -> List[UUID]:
         """Collect images that were misclassified based on feedback"""
         try:
-            from models.database_models import Feedback, Prediction, Image
+            from apps.amulet_ai_service.models.database_models import Feedback, Prediction, Image
             
             # Get feedback where prediction was incorrect
             incorrect_feedbacks = self.db.query(Feedback).filter(
@@ -42,7 +42,7 @@ class RetrainingService:
     def create_retraining_dataset(self, dataset_name: str, image_ids: List[UUID]) -> UUID:
         """Create a new dataset version for retraining"""
         try:
-            from models.database_models import Dataset, DatasetImage, Image
+            from apps.amulet_ai_service.models.database_models import Dataset, DatasetImage, Image
             from apps.amulet_ai_service.services.storage_client import storage_client
             import uuid
             
@@ -86,7 +86,7 @@ class RetrainingService:
     def trigger_retraining(self, dataset_id: UUID, model_type: str, config: Dict[str, Any]) -> UUID:
         """Trigger a retraining job"""
         try:
-            from models.database_models import TrainingJob
+            from apps.amulet_ai_service.models.database_models import TrainingJob
             
             # Create training job
             db_job = TrainingJob(
@@ -110,7 +110,7 @@ class RetrainingService:
     def auto_retrain_from_feedback(self, model_type: str = "classifier", min_feedback: int = 10):
         """Automatically trigger retraining if enough incorrect feedback is collected"""
         try:
-            from models.database_models import Feedback
+            from apps.amulet_ai_service.models.database_models import Feedback
             
             # Count incorrect feedback
             incorrect_count = self.db.query(Feedback).filter(

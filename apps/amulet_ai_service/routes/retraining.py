@@ -32,7 +32,7 @@ async def trigger_retraining(
         # Start training in background
         if background_tasks:
             training_service = TrainingService(db)
-            from models.database_models import TrainingJob
+            from apps.amulet_ai_service.models.database_models import TrainingJob
             job = db.query(TrainingJob).filter(TrainingJob.id == job_id).first()
             if job:
                 background_tasks.add_task(

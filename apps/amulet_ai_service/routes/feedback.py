@@ -85,7 +85,7 @@ async def approve_feedback(
         
         # Trigger auto-retraining if requested
         if auto_retrain:
-            from services.retraining_service import RetrainingService
+            from apps.amulet_ai_service.services.retraining_service import RetrainingService
             retraining_service = RetrainingService(db)
             retraining_service.auto_retrain_from_feedback()
         

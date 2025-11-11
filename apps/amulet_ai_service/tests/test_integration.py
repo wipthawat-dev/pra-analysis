@@ -39,7 +39,7 @@ class TestImageAnalysisWorkflow:
         prediction_id = analysis_data["prediction_id"]
         
         # Verify database records
-        from models.database_models import Image, Prediction
+        from apps.amulet_ai_service.models.database_models import Image, Prediction
         
         images = db_session.query(Image).all()
         assert len(images) >= 1
@@ -59,7 +59,7 @@ class TestImageAnalysisWorkflow:
         assert feedback_response.status_code == 200
         
         # Verify feedback saved
-        from models.database_models import Feedback
+        from apps.amulet_ai_service.models.database_models import Feedback
         feedbacks = db_session.query(Feedback).filter(
             Feedback.prediction_id == prediction_id
         ).all()
@@ -240,7 +240,7 @@ class TestErrorRecovery:
             pass
         
         # Database should remain consistent
-        from models.database_models import Label
+        from apps.amulet_ai_service.models.database_models import Label
         labels = db_session.query(Label).all()
         # Verify no orphaned labels
         for label in labels:
